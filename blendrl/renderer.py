@@ -64,7 +64,7 @@ class Renderer:
         self.fps = fps
 
         try:
-            self.action_meanings = self.env.env.get_action_meanings()
+            self.action_meanings = self.env.env.unwrapped.get_action_meanings()
             self.keys2actions = self.env.env.unwrapped.get_keys_to_action()
         except Exception:
             print(

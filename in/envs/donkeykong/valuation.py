@@ -103,7 +103,8 @@ def on_left(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
     """
     player_x = player[:, 1]
     obj_x = obj[:, 1]
-    return sigmoid_smoothing(obj_x + 3 < player_x, temperature=6.0)
+    left = player_x - obj_x
+    return sigmoid_smoothing(left > 0, temperature=6.0)
 
 
 def on_right(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
@@ -112,7 +113,8 @@ def on_right(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
     """
     player_x = player[:, 1]
     obj_x = obj[:, 1]
-    prob = sigmoid_smoothing(obj_x - 3 > player_x, temperature=6.0)
+    right = obj_x - player_x
+    prob = sigmoid_smoothing(right > 0, temperature=6.0)
     return prob
 
 
@@ -128,7 +130,7 @@ def above(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
 
 
 def close_by_barrel(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
-    return _close_by(player, obj, th=32) * same_level(player, obj)
+    return _close_by(player, obj, th=25) * same_level(player, obj)
 
 
 def close_by_hammer(player: th.Tensor, obj: th.Tensor) -> th.Tensor:

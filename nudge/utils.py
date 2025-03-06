@@ -231,7 +231,7 @@ def print_program_nsfr(actor, mode):
         W_softmaxed = torch.softmax(nsfr.im.W, 1)
         w = softor(W_softmaxed, dim=0)
         for i, c in enumerate(nsfr.clauses):
-            print('C_' + str(i) + ': ', np.round(w[i].detach().cpu().item(), 2), nsfr.clauses[i])
+            print('C_' + str(i) + ': ', np.round(w[i].detach().cpu().item(), 5), nsfr.clauses[i])
             
 
 def print_program_neumann(actor, mode):
