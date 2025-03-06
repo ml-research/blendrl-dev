@@ -66,7 +66,7 @@ class NudgeEnv(NudgeBaseEnv):
         self.n_actions = len(self.pred2action)
         self.n_raw_actions = 3
         self.n_objects = 12
-        self.n_features = 4  # visible, x-pos, y-pos, right-facing
+        self.n_features = 2  # x-pos, y-pos
         self.seed = seed
 
         # Compute index offsets. Needed to deal with multiple same-category objects
@@ -128,7 +128,7 @@ class NudgeEnv(NudgeBaseEnv):
         """
         state = th.zeros((self.n_objects, self.n_features), dtype=th.int32)
         # seve bboxes for exlanation rendering
-        self.bboxes = th.zeros((self.n_objects, 4), dtype=th.int32)
+        self.bboxes = th.zeros((self.n_objects, 2), dtype=th.int32)
 
         obj_count = {k: 0 for k in MAX_NB_OBJECTS.keys()}
 
@@ -136,12 +136,9 @@ class NudgeEnv(NudgeBaseEnv):
             if obj.category not in self.relevant_objects:
                 continue
             idx = self.obj_offsets[obj.category] + obj_count[obj.category]
-            if obj.category == "Chicken":
-                state[idx] = th.Tensor([1, 0, *obj.center])
-            elif obj.category == "Car":
-                state[idx] = th.Tensor([0, 1, *obj.center])
+            state[idx] = th.Tensor([*obj.center])
             obj_count[obj.category] += 1
-            self.bboxes[idx] = th.tensor(obj.xywh)
+            self.bboxes[idx] = th.tensor(obj.xy)
         return state
 
     def extract_neural_state(self, raw_state):

@@ -257,7 +257,7 @@ def main():
     # ALGO Logic: Storage setup
     observation_space = (4, 84, 84)
     # logic_observation_space = (84, 51, 4)
-    logic_observation_space = (envs.n_objects, 4)
+    logic_observation_space = (envs.n_objects, 2)
     # logic_observation_space = (84, 43, 4)
     action_space = ()
     obs = torch.zeros((args.num_steps, args.num_envs) + observation_space).to(device)
@@ -282,7 +282,6 @@ def main():
     next_logic_obs = next_logic_obs.to(device)
     next_obs = torch.Tensor(next_obs).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
-
     for iteration in range(1, args.num_iterations + 1):
         # Annealing the rate if instructed to do so.
         if args.anneal_lr:
