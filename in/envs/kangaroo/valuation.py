@@ -119,8 +119,7 @@ def close_by_coconut_combi(player: th.Tensor, *objects: th.Tensor) -> th.Tensor:
     results = []
     for obj in objects:
         results.append(_close_by(player, obj))
-    # Stack the results to combine the probabilities across different objects.
-    stacked = th.stack(results)  # Shape: [number_of_objects, ...]
+    stacked = th.stack(results)
     # Compute the union probability assuming independence:
     return 1 - th.prod(1 - stacked, dim=0)
 
@@ -128,8 +127,6 @@ def close_by_coconut_combi(player: th.Tensor, *objects: th.Tensor) -> th.Tensor:
 def close_by_coconut(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
     """
     Compute probability that a player is close to a coconut using sigmoid smoothing.
-    :param temperature: Controls probability smoothness.
-    :return: Probability Tensor (0.0 to 1.0).
     """
     return _close_by(player, obj)
 
@@ -139,8 +136,6 @@ def close_by_coconut(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
 def _close_by(player: th.Tensor, obj: th.Tensor, temperature: float = 6.0) -> th.Tensor:
     """
     Compute probability that a player is close to an object using sigmoid smoothing.
-    :param temperature: Controls probability smoothness.
-    :return: Probability Tensor (0.0 to 1.0).
     """
     th = 32
     player_x = player[:, 1]
@@ -175,9 +170,9 @@ def same_level(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
     is_1st_level = (124 <= obj1_y) & (obj1_y <= 172) & (124 <= obj2_y) & (obj2_y <= 172)
 
     # Determine if they are on the same level
-    is_same_level = is_3rd_level | is_2nd_level | is_1st_level  # Bitwise OR for efficiency
+    is_same_level = is_3rd_level | is_2nd_level | is_1st_level
 
-    return sigmoid_smoothing(is_same_level, temperature=6.0)  # Smooth probability output
+    return sigmoid_smoothing(is_same_level, temperature=6.0)
 
 
 def is_lower(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
@@ -333,9 +328,7 @@ def false_predicate(agent: th.Tensor) -> th.Tensor:
 def sigmoid_smoothing(bool_tensor: th.Tensor, temperature: float = 5.0) -> th.Tensor:
     """
     Apply sigmoid smoothing to a boolean tensor, converting True/False into soft probabilities.
-
     :param bool_tensor: Boolean tensor indicating condition (True = overlap, False = no overlap).
     :param temperature: Controls softness of probability conversion (higher = more binary-like).
-    :return: Soft probability tensor (0.0 to 1.0).
     """
     return th.sigmoid(temperature * (bool_tensor.float() - 0.5))  # Adaptive smoothing
