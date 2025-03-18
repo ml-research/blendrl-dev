@@ -59,7 +59,7 @@ class Args:
     # Algorithm specific arguments
     env_id: str = "Seaquest-v4"
     """the id of the environment"""
-    total_timesteps: int = 6000
+    total_timesteps: int = 60000000
     """total timesteps of the experiments"""
     num_envs: int = 20
     """the number of parallel game environments"""
@@ -111,7 +111,7 @@ class Args:
     """the mode for the agent"""
     rules: str = "default"
     """the ruleset used in the agent"""
-    save_steps: int = 500
+    save_steps: int = 5000000
     """the number of steps to save models"""
     pretrained: bool = False
     """to use pretrained neural agent"""

@@ -11,6 +11,12 @@ def full_divers(objs: th.Tensor) -> th.Tensor:
     result = num_collected_divers == 6
     return bool_to_probs(result)
 
+def has_divers(objs: th.Tensor) -> th.Tensor:
+    divers_vs = objs[:, -6:]
+    num_collected_divers = th.sum(divers_vs[:,:,0], dim=1)
+    result = num_collected_divers > 0
+    return bool_to_probs(result)
+
 def not_full_divers(objs: th.Tensor) -> th.Tensor:
     divers_vs = objs[:, -6:]
     num_collected_divers = th.sum(divers_vs[:,:,0], dim=1)
@@ -34,11 +40,17 @@ def visible_enemy(obj: th.Tensor) -> th.Tensor:
     result = obj[..., 0] == 1
     return bool_to_probs(result)
 
+def no_visible_enemy(obj: th.Tensor) -> th.Tensor:
+    result = obj[..., 0] == 0
+    return bool_to_probs(result)
 
 def visible_diver(obj: th.Tensor) -> th.Tensor:
     result = obj[..., 0] == 1
     return bool_to_probs(result)
 
+def no_visible_diver(obj: th.Tensor) -> th.Tensor:
+    result = obj[..., 0] == 0
+    return bool_to_probs(result)
 
 def facing_left(player: th.Tensor) -> th.Tensor:
     result = player[..., 3] == 12
@@ -54,21 +66,24 @@ def same_depth_enemy(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
     player_y = player[..., 2]
     obj_y = obj[..., 2]
     obj_prob = obj[:, 0]
-    return bool_to_probs(abs(player_y - obj_y) < 6) * obj_prob
+    return sigmoid_smoothing(abs(player_y - obj_y) < 6) * obj_prob
+    #return bool_to_probs(abs(player_y - obj_y) < 6) * obj_prob
 
 
 def same_depth_diver(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
     player_y = player[..., 2]
     obj_y = obj[..., 2]
     obj_prob = obj[:, 0]
-    return bool_to_probs(abs(player_y - obj_y) < 6) * obj_prob
+    return sigmoid_smoothing(abs(player_y - obj_y) < 6) * obj_prob
+    #return bool_to_probs(abs(player_y - obj_y) < 6) * obj_prob
 
 
 def same_depth_missile(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
     player_y = player[..., 2]
     obj_y = obj[..., 2]
     obj_prob = obj[:, 0]
-    return bool_to_probs(abs(player_y - obj_y) < 6) * obj_prob
+    return sigmoid_smoothing(abs(player_y - obj_y) < 6) * obj_prob
+    #return bool_to_probs(abs(player_y - obj_y) < 6) * obj_prob
 
 
 def deeper_than_enemy(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
@@ -76,7 +91,8 @@ def deeper_than_enemy(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
     player_y = player[..., 2]
     obj_y = obj[..., 2]
     obj_prob = obj[:, 0]
-    return bool_to_probs(player_y > obj_y + 4) * obj_prob
+    return sigmoid_smoothing(player_y > obj_y - 4) * obj_prob
+    #return bool_to_probs(player_y > obj_y + 4) * obj_prob
 
 
 def deeper_than_diver(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
@@ -84,7 +100,8 @@ def deeper_than_diver(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
     player_y = player[..., 2]
     obj_y = obj[..., 2]
     obj_prob = obj[:, 0]
-    return bool_to_probs(player_y > obj_y + 4) * obj_prob
+    return sigmoid_smoothing(player_y > obj_y - 4) * obj_prob
+    #return bool_to_probs(player_y > obj_y + 4) * obj_prob
 
 
 def higher_than_enemy(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
@@ -92,7 +109,8 @@ def higher_than_enemy(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
     player_y = player[..., 2]
     obj_y = obj[..., 2]
     obj_prob = obj[:, 0]
-    return bool_to_probs(player_y < obj_y - 4) * obj_prob
+    return sigmoid_smoothing(player_y < obj_y - 4) * obj_prob
+    #return bool_to_probs(player_y < obj_y - 4) * obj_prob
 
 
 def higher_than_diver(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
@@ -100,7 +118,8 @@ def higher_than_diver(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
     player_y = player[..., 2]
     obj_y = obj[..., 2]
     obj_prob = obj[:, 0]
-    return bool_to_probs(player_y < obj_y - 4) * obj_prob
+    return sigmoid_smoothing(player_y < obj_y - 4) * obj_prob
+    #return bool_to_probs(player_y < obj_y - 4) * obj_prob
 
 
 def close_by_missile(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
@@ -115,7 +134,7 @@ def close_by_diver(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
     return _close_by(player, obj)
 
 
-def _close_by(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
+def _close_by(player: th.Tensor, obj: th.Tensor, temperature: float = 6.0) -> th.Tensor:
     th = 48
     player_x = player[..., 1]
     player_y = player[..., 2]
@@ -123,7 +142,8 @@ def _close_by(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
     obj_y = obj[..., 2]
     obj_prob = obj[:, 0]
     dist = (player[:, 1:2] - obj[:, 1:2]).pow(2).sum(1).sqrt()
-    return bool_to_probs(dist < th) * obj_prob
+    return sigmoid_smoothing(dist < th, temperature) * obj_prob
+    # return bool_to_probs(dist < th) * obj_prob
     # result = th.clip((128 - abs(player_x - obj_x) - abs(player_y - obj_y)) / 128, 0, 1) * obj_prob
     # return result
 
@@ -148,7 +168,8 @@ def left_of_enemy(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
     player_x = player[..., 1]
     obj_x = obj[..., 1]
     obj_prob = obj[:, 0]
-    return bool_to_probs(player_x < obj_x) * obj_prob
+    return sigmoid_smoothing(player_x < obj_x) * obj_prob
+    #return bool_to_probs(player_x < obj_x) * obj_prob
 
 
 def left_of_diver(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
@@ -156,7 +177,8 @@ def left_of_diver(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
     player_x = player[..., 1]
     obj_x = obj[..., 1]
     obj_prob = obj[:, 0]
-    return bool_to_probs(player_x < obj_x) * obj_prob
+    return sigmoid_smoothing(player_x < obj_x) * obj_prob
+    #return bool_to_probs(player_x < obj_x) * obj_prob
 
 
 def right_of_enemy(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
@@ -164,7 +186,8 @@ def right_of_enemy(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
     player_x = player[..., 1]
     obj_x = obj[..., 1]
     obj_prob = obj[:, 0]
-    return bool_to_probs(player_x > obj_x) * obj_prob
+    return sigmoid_smoothing(player_x > obj_x) * obj_prob
+    #return bool_to_probs(player_x > obj_x) * obj_prob
 
 
 def right_of_diver(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
@@ -172,7 +195,8 @@ def right_of_diver(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
     player_x = player[..., 1]
     obj_x = obj[..., 1]
     obj_prob = obj[:, 0]
-    return bool_to_probs(player_x > obj_x) * obj_prob
+    return sigmoid_smoothing(player_x > obj_x) * obj_prob
+    #return bool_to_probs(player_x > obj_x) * obj_prob
 
 
 def oxygen_low(oxygen_bar: th.Tensor) -> th.Tensor:
@@ -198,3 +222,13 @@ def true_predicate(agent: th.Tensor) -> th.Tensor:
 
 def false_predicate(agent: th.Tensor) -> th.Tensor:
     return bool_to_probs(th.tensor([False]))
+
+def sigmoid_smoothing(bool_tensor: th.Tensor, temperature: float = 5.0) -> th.Tensor:
+    """
+    Apply sigmoid smoothing to a boolean tensor, converting True/False into soft probabilities.
+
+    :param bool_tensor: Boolean tensor indicating condition (True = overlap, False = no overlap).
+    :param temperature: Controls softness of probability conversion (higher = more binary-like).
+    :return: Soft probability tensor (0.0 to 1.0).
+    """
+    return th.sigmoid(temperature * (bool_tensor.float() - 0.5))  # Adaptive smoothing
