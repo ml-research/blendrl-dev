@@ -31,7 +31,7 @@ from nudge.utils import load_model_train
 # Log in to your W&B account
 import wandb
 
-OUT_PATH = Path("out_freeway/")
+OUT_PATH = Path("out_spaceinvaders/")
 IN_PATH = Path("in/")
 
 torch.set_num_threads(5)

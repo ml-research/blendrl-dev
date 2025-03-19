@@ -1,0 +1,9 @@
+is_player_under_bullet:2:oplayer,obullet
+is_player_under_alien:2:oplayer,oalien
+is_player_under_shield:2:oplayer,oshield
+is_player_not_under_shield:2:oplayer,oshield
+close_to_bullet:2:oplayer,obullet
+on_left_shield:2:oplayer,oshield
+on_right_shield:2:oplayer,oshield
+on_left_bullet:2:oplayer,obullet
+on_right_bullet:2:oplayer,obullet

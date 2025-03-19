@@ -54,8 +54,6 @@ class NudgeEnv(NudgeBaseEnv):
         'fire': 1,
         'right': 2,
         'left': 3,
-        'right_fire': 4,
-        'left_fire': 5,
     }
     pred_names: Sequence
 
@@ -67,9 +65,9 @@ class NudgeEnv(NudgeBaseEnv):
         self.env._env = make_env(self.env._env)
         # self.env_ori._env = make_env_ori(self.env_ori._env)
         self.n_actions = len(self.pred2action)
-        self.n_raw_actions = 6
+        self.n_raw_actions = 4
         self.n_objects = 44
-        self.n_features = 4  # visible, x-pos, y-pos, right-facing
+        self.n_features = 4  
         self.seed = seed
 
         # Compute index offsets. Needed to deal with multiple same-category objects

@@ -1,2 +1,2 @@
-neural_agent(X):-.
-logic_agent(X):-.
+neural_agent(X):-is_player_under_alien(P,A).
+logic_agent(X):-is_player_under_alien(P,A).
