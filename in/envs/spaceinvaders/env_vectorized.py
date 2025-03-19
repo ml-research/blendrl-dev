@@ -52,8 +52,6 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
         "fire": 1,
         "right": 2,
         "left": 3,
-        "right_fire": 4,
-        "left_fire": 5,
     }
     pred_names: Sequence
 
@@ -212,7 +210,6 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
         obj_count = {k: 0 for k in MAX_NB_OBJECTS.keys()}
 
         for obj in raw_state:
-            #print(f"Processing object: {obj}")  # Debug print
             if obj.category not in self.relevant_objects:
                 continue
             idx = self.obj_offsets[obj.category] + obj_count[obj.category]
