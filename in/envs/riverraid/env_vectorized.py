@@ -4,7 +4,8 @@ import torch
 from blendrl.env_vectorized import VectorizedNudgeBaseEnv
 from hackatari.core import HackAtari
 import torch as th
-from ocatari.ram.riverraid import MAX_NB_OBJECTS
+
+# from ocatari.ram.riverraid import MAX_NB_OBJECTS, MAX_NB_OBJECTS_HUD
 import gymnasium as gym
 
 from stable_baselines3.common.atari_wrappers import (  # isort:skip
@@ -13,6 +14,18 @@ from stable_baselines3.common.atari_wrappers import (  # isort:skip
     MaxAndSkipEnv,
     NoopResetEnv,
 )
+
+MAX_NB_OBJECTS = {
+    "Player": 1,
+    "PlayerMissile": 1,
+    "FuelDepot": 4,
+    "Tanker": 4,
+    "Helicopter": 4,
+    "House": 4,
+    "Jet": 4,
+    "Bridge": 1,
+}
+MAX_NB_OBJECTS_HUD = dict(MAX_NB_OBJECTS, **{"PlayerScore": 1, "Lives": 1})
 
 
 def make_env(env):
@@ -92,8 +105,8 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
 
         self.n_actions = 6
         self.n_raw_actions = 18
-        self.n_objects = 30
-        self.n_features = 3  # visible, x-pos, y-pos
+        self.n_objects = 24  # len(MAX_NB_OBJECTS)
+        self.n_features = 4
         self.seed = seed
 
         # Compute index offsets. Needed to deal with multiple same-category objects
@@ -190,16 +203,29 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
         Returns:
             torch.Tensor: Logic state.
         """
-        state = th.zeros((self.n_objects, self.n_features), dtype=th.int32)
-
+        state = th.zeros((self.n_objects, self.n_features), dtype=th.float32)
         obj_count = {k: 0 for k in MAX_NB_OBJECTS.keys()}
 
         for obj in raw_state:
             if obj.category not in self.relevant_objects:
                 continue
             idx = self.obj_offsets[obj.category] + obj_count[obj.category]
-            state[idx] = th.tensor([1, *obj.center])
+
+            # Ensure idx is within bounds
+            if idx >= self.n_objects:
+                print(
+                    f"Warning: Object index {idx} exceeds limit ({self.n_objects}). Skipping {obj.category}."
+                )
+                continue
+
+            x, y = obj.center
+            orientation = obj.orientation if obj.orientation is not None else 0
+
+            state[idx] = th.tensor(
+                [1.0, float(x), float(y), float(orientation)], dtype=th.float32
+            )
             obj_count[obj.category] += 1
+
         return state
 
     def extract_neural_state(self, raw_input_state):

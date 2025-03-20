@@ -1,4 +1,4 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.2
 Name: nsfr
 Version: 0.1.0
 Summary: Neuro Symbolic Forward Reasonner
@@ -11,6 +11,12 @@ Requires-Dist: seaborn
 Requires-Dist: setuptools
 Requires-Dist: tqdm
 Requires-Dist: lark
+Dynamic: author
+Dynamic: author-email
+Dynamic: description
+Dynamic: home-page
+Dynamic: requires-dist
+Dynamic: summary
 
 NSFR Framework
 ==============

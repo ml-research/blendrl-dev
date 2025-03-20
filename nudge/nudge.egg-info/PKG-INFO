@@ -1,4 +1,4 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.2
 Name: nudge
 Version: 0.5.0
 Summary: Neurally gUided Differentiable loGic policiEs (NUDGE)
@@ -15,6 +15,12 @@ Requires-Dist: rtpt
 Requires-Dist: wandb
 Requires-Dist: ocatari
 Requires-Dist: stable_baselines3==2.3.2
+Dynamic: author
+Dynamic: author-email
+Dynamic: description
+Dynamic: home-page
+Dynamic: requires-dist
+Dynamic: summary
 
 ### *Refactoring is undergoing.
 # BlendRL: A Framework for Merging Symbolic and Neural Policies
