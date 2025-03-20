@@ -35,14 +35,21 @@ def is_player_not_under_shield(player: th.Tensor, shield: th.Tensor):
     result = 1 - bool_to_probs(diff < 10)
     return result
 
+def is_player_under_satellite(player: th.Tensor, satellite: th.Tensor) -> th.Tensor:
+    player_x = player[:, -2]
+    satellite_x = satellite[:, -2]
+    diff = abs(satellite_x - player_x)
+    result = bool_to_probs(diff < 8)
+    return result
+
 def close_to_bullet(player: th.Tensor, bullet: th.Tensor) -> th.Tensor:
-    c_1 = player[:, -2:]
-    c_2 = bullet[:, -2:]
+    player_xy = player[:, -2:]
+    bullet_xy = bullet[:, -2:]
 
-    dis_x = abs(c_1[:, 0] - c_2[:, 0]) / 171
-    dis_y = abs(c_1[:, 1] - c_2[:, 1]) / 171
+    dis_x = abs(player_xy[:, 0] - bullet_xy[:, 0])
+    dis_y = abs(player_xy[:, 1] - bullet_xy[:, 1]) 
 
-    result = bool_to_probs((dis_x < 4) & (dis_y < 20))
+    result = bool_to_probs((dis_x < 6) & (dis_y < 20))
 
     return result
 
@@ -52,8 +59,9 @@ def on_left_shield(player: th.Tensor, shield: th.Tensor) -> th.Tensor:
     """
     player_x = player[:, -2]
     shield_x = shield[:, -2]
-    return sigmoid_smoothing(shield_x < player_x, temperature=6.0)
-
+    diff = shield_x - player_x
+    result = bool_to_probs(diff > 0)
+    return result
 
 def on_right_shield(player: th.Tensor, shield: th.Tensor) -> th.Tensor:
     """
@@ -61,7 +69,9 @@ def on_right_shield(player: th.Tensor, shield: th.Tensor) -> th.Tensor:
     """
     player_x = player[:, -2]
     shield_x = shield[:, -2]
-    return sigmoid_smoothing(shield_x > player_x, temperature=6.0)
+    diff = shield_x - player_x
+    result = bool_to_probs(diff < 0)
+    return result
 
 def on_left_bullet(player: th.Tensor, bullet: th.Tensor) -> th.Tensor:
     """
@@ -69,8 +79,9 @@ def on_left_bullet(player: th.Tensor, bullet: th.Tensor) -> th.Tensor:
     """
     player_x = player[:, -2]
     bullet_x = bullet[:, -2]
-    return sigmoid_smoothing(bullet_x < player_x, temperature=6.0)
-
+    diff = bullet_x - player_x
+    result = bool_to_probs(diff < 0)
+    return result
 
 def on_right_bullet(player: th.Tensor, bullet: th.Tensor) -> th.Tensor:
     """
@@ -78,22 +89,9 @@ def on_right_bullet(player: th.Tensor, bullet: th.Tensor) -> th.Tensor:
     """
     player_x = player[:, -2]
     bullet_x = bullet[:, -2]
-    return sigmoid_smoothing(bullet_x > player_x, temperature=6.0)
-
-def sigmoid_smoothing(bool_tensor: th.Tensor, temperature: float = 5.0) -> th.Tensor:
-    """
-    Apply sigmoid smoothing to a boolean tensor, converting True/False into soft probabilities.
-
-    :param bool_tensor: Boolean tensor indicating condition (True = overlap, False = no overlap).
-    :param temperature: Controls softness of probability conversion (higher = more binary-like).
-    :return: Soft probability tensor (0.0 to 1.0).
-    """
-    return th.sigmoid(temperature * (bool_tensor.float() - 0.5))  # Adaptive smoothing
-
-
-
-
-
+    diff = bullet_x - player_x
+    result = bool_to_probs(diff > 0)
+    return result
 
 
 def sigmoid_smoothing(bool_tensor: th.Tensor, temperature: float = 5.0) -> th.Tensor:

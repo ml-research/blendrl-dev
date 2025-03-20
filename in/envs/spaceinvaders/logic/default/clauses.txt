@@ -1,5 +1,5 @@
-fire(X):-is_player_under_alien(P,A),is_player_not_under_shield(P,S).
+fire(X):-is_player_under_alien(P,A),is_player_not_under_shield(P,SH),is_player_under_satellite(P,SA).
 left_to_dodge(X):-is_player_under_bullet(P,B),close_to_bullet(P,B),on_right_bullet(P,B).
-left_to_fire(X):-is_player_under_shield(P,S),on_right_shield(P,S).
+left_to_fire(X):-is_player_under_shield(P,SH),on_right_shield(P,SH).
 right_to_dodge(X):-is_player_under_bullet(P,B),close_to_bullet(P,B),on_left_bullet(P,B).
-right_to_fire(X):-is_player_under_shield(P,S),on_left_shield(P,S).
+right_to_fire(X):-is_player_under_shield(P,SH),on_left_shield(P,SH).
