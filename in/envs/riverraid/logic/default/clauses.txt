@@ -2,13 +2,11 @@ up_fuel(X):-close_by_fuel(P,F).
 left_to_fuel(X):-right_of_river(P,R),close_by_fuel(P,F).
 right_to_fuel(X):-left_of_river(P,R),close_by_fuel(P,F).
 up_enemy(X):-higher_than_enemy(P,E),close_by_enemy_ship(P,E).
-down_enemy(X):-deeper_than_enemy(P,E),close_by_enemy_ship(P,E).
+down_enemy(X):-lower_than_enemy(P,E),close_by_enemy_ship(P,E).
 right_enemy(X):-left_of_river(P,R),close_by_enemy_ship(P,E).
 left_enemy(X):-right_of_river(P,R),close_by_enemy_ship(P,E).
 right_helicopter(X):-left_of_river(P,R),close_by_helicopter(P,H).
 left_helicopter(X):-right_of_river(P,R),close_by_helicopter(P,H).
 up_helicopter(X):-higher_than_enemy(P,H),close_by_helicopter(P,H).
-down_helicopter(X):-deeper_than_enemy(P,H),close_by_helicopter(P,H).
-up_bridge(X):-on_bridge_river(B,R),on_bridge_player(P,B).
-right_bridge(X):-right_of_river(P,R),on_bridge_player(P,B).
-left_bridge(X):-left_of_river(P,R),on_bridge_player(P,B).
+down_helicopter(X):-lower_than_enemy(P,H),close_by_helicopter(P,H).
+fire_at_bridge(X):-close_by_bridge(P,B).

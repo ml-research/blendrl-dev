@@ -1,1 +1,1 @@
-python train_blenderl.py --env-name riverraid --joint-training --num-steps 128 --num-envs 5 --gamma 0.99
+python train_blenderl.py --env-name riverraid --joint-training --num-steps 32 --num-envs 2 --gamma 0.99
