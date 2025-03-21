@@ -2,14 +2,12 @@ on_river:2:oplayer,oriver
 right_of_river:2:oplayer,oriver
 left_of_river:2:oplayer,oriver
 false_predicate:1:oplayer
+on_bridge_player:2:oplayer,obridge
+on_bridge_river:2:obridge,oriver
 close_by_fuel:2:oplayer,ofuel
 close_by_enemy_ship:2:oplayer,oenemyship
 close_by_helicopter:2:oplayer,ohelicopter
+close_by_bullet:2:oplayer,obullet
 close_by_enemy_base:2:oplayer,oenemybase
-close_by_bridge:2:oplayer,obridge
 nothing_around:1:image
 same_level_river:2:oplayer,oriver
-higher_than_enemy:2:oplayer,oenemyship
-lower_than_enemy:2:oplayer,oenemyship
-higher_than_helicopter:2:oplayer,ohelicopter
-lower_than_helicopter:2:oplayer,ohelicopter
