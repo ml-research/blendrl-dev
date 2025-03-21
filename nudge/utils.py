@@ -229,6 +229,11 @@ def print_program_nsfr(actor, mode):
                   C[max_i], 'W_' + str(i) + ':', round(W_[max_i].detach().cpu().item(), 3))
     elif mode == "softor":
         W_softmaxed = torch.softmax(nsfr.im.W, 1)
+        # print(f"nsfr.im.W shape: {nsfr.im.W.shape}, values: {nsfr.im.W}")
+        # print(f"numels: {W_softmaxed.numel()}")
+        # print(f"W_softmaxed shape: {W_softmaxed.shape}, values: {W_softmaxed}")
+        # if W_softmaxed.numel() == 0:
+        #     raise ValueError("W_softmaxed is empty in mode softor. Check actor.get_weights() output.")
         w = softor(W_softmaxed, dim=0)
         for i, c in enumerate(nsfr.clauses):
             print('C_' + str(i) + ': ', np.round(w[i].detach().cpu().item(), 5), nsfr.clauses[i])

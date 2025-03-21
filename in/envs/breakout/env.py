@@ -8,7 +8,7 @@ import numpy as np
 
 
 class NudgeEnv(NudgeBaseEnv):
-    name = "pong"
+    name = "breakout"
     pred2action = {
         'noop': 0,
         'fire': 1,
@@ -19,13 +19,13 @@ class NudgeEnv(NudgeBaseEnv):
 
     def __init__(self, mode: str, render_mode="rgb_array", render_oc_overlay=False, seed=None):
         super().__init__(mode)
-        self.env = OCAtari(env_name="ALE/Pong-v5", mode="ram",obs_mode="ori",
+        self.env = OCAtari(env_name="ALE/Breakout-v5", mode="ram",obs_mode="ori",
                            render_mode=render_mode, render_oc_overlay=render_oc_overlay)
 
         self.env._env = make_env(self.env._env)
         self.n_actions = len(self.pred2action)
-        self.n_raw_actions = 6
-        self.n_objects = 3
+        self.n_raw_actions = 4
+        self.n_objects = 110
         self.n_features = 4
         self.seed = seed
        
@@ -52,16 +52,15 @@ class NudgeEnv(NudgeBaseEnv):
         return (logic_state, neural_state), reward, done, truncations, infos
 
     def extract_logic_state(self, raw_state):
+        # print('raw_state:', enumerate(raw_state))
         logic_state = np.zeros((self.n_objects, self.n_features))
-        for i, entity in enumerate(raw_state):
-            if entity.category == "player":
-                logic_state[i][0] = 1
-            elif entity.category == 'ball':
-                logic_state[i][1] = 1
-            elif "enemy" in entity.category:
-                logic_state[i][2] = 1
-            logic_state[i][-4:] = np.array(entity.h_coords).flatten()
-        return torch.tensor(logic_state)
+        for idx, obj in enumerate(raw_state):
+            logic_state[idx][-4:] = np.array(obj.h_coords).flatten()
+
+        if(raw_state[1].category == "NoObject"):
+            logic_state[1][0] = -1
+        
+        return torch.tensor(logic_state, dtype=torch.float32)
 
 
     def extract_neural_state(self, raw_state):

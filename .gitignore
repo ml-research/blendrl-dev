@@ -1,0 +1,8 @@
+__pycache__
+/models
+/out
+/out_breakout
+/out_nudge
+/out_pong
+/nsfr/nsfr.egg-info
+/nudge/nudge.egg-info

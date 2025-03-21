@@ -1,0 +1,6 @@
+player_left_of_ball:2:oplayer,oball
+player_right_of_ball:2:oplayer,oball
+ball_closeto_player:2:oplayer,oball
+ball_comingto_player:1:oball
+ball_goto_enemy:1:oball
+no_ball:1:oball
