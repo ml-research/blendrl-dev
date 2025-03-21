@@ -52,7 +52,6 @@ class NudgeEnv(NudgeBaseEnv):
         return (logic_state, neural_state), reward, done, truncations, infos
 
     def extract_logic_state(self, raw_state):
-        # print('raw_state:', enumerate(raw_state))
         logic_state = np.zeros((self.n_objects, self.n_features))
         for idx, obj in enumerate(raw_state):
             logic_state[idx][-4:] = np.array(obj.h_coords).flatten()
