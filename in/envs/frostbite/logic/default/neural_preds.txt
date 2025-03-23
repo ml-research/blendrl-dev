@@ -1,19 +1,20 @@
-below_enemy:2:oplayer,oenemy 
-above_enemy:2:oplayer,oenemy #above_right/above_left??
-below_fish:2:oplayer,ogreenfish
-above_fish:2:oplayer,ogreenfish
-left_of_enemy:2:oplayer,oenemy
-right_of_enemy:2:oplayer,oenemy
+no_enemy_below:2:oplayer,oenemy 
+no_enemy_above:2:oplayer,oenemy
+fish_below:2:oplayer,ogreenfish
+fish_above:2:oplayer,ogreenfish
+enemy_left:2:oplayer,oenemy
+enemy_right:2:oplayer,oenemy
+no_enemy_left:2:oplayer,oenemy
+no_enemy_right:2:oplayer,oenemy
 far_left:1:oplayer
 far_right:1:oplayer
 low_temperature:1:otemperature
-white_plate_above:2:oplayer,ofloatingblock
-white_plate_below:2:oplayer,ofloatingblock
-blue_plate_above:2:oplayer,ofloatingblock
-blue_plate_below:2:oplayer,ofloatingblock #above_right/above_left??
-close_to_top:1:oplayer
+no_block_above:2:oplayer,ofloatingblock
+no_block_below:2:oplayer,ofloatingblock
+white_block_above:2:oplayer,ofloatingblock
+white_block_below:2:oplayer,ofloatingblock
+block_above:2:oplayer,ofloatingblock
+block_below:2:oplayer,ofloatingblock
 left_of_door:2:oplayer,odoor
-right_of_door:2:oplayer:odoor
-right_of_bear:2:oplayer,obear
-left_of_bear:2:oplayer,obear
+right_of_door:2:oplayer,odoor
 door_exists:1:odoor

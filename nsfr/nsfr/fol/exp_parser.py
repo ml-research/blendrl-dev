@@ -54,6 +54,7 @@ class ExpTree(Transformer):
         return func
 
     def predicate(self, alphas):
+        print([p for p in self.lang.preds if p.name == alphas[0]])
         pred = [p for p in self.lang.preds if p.name == alphas[0]][0]
         return pred
 

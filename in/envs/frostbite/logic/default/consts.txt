@@ -4,10 +4,10 @@ oplayer:obj1
 obear:obj2
 ohouse:obj3
 odoor:obj4
-oenemy:obj5,obj6,obj7,obj8,obj9,obj10,obj11,obj12,obj13,obj14,obj15,obj16,obj17,obj18,obj19,obj20,obj21,obj22,obj23,obj24,obj25,obj26,obj27,obj28
-#obird:obj5,obj6,obj7,obj8,obj9,obj10,obj11,obj12
-#oclam:obj13,obj14,obj15,obj16,obj17,obj18,obj19,obj20
-#ocrab:obj21,obj22,obj23,obj24,obj25,obj26,obj27,obj28
+oenemy:obj2,obj5,obj6,obj7,obj8,obj9,obj10,obj11,obj12,obj13,obj14,obj15,obj16,obj17,obj18,obj19,obj20,obj21,obj22,obj23,obj24,obj25,obj26,obj27,obj28
+obird:obj5,obj6,obj7,obj8,obj9,obj10,obj11,obj12
+oclam:obj13,obj14,obj15,obj16,obj17,obj18,obj19,obj20
+ocrab:obj21,obj22,obj23,obj24,obj25,obj26,obj27,obj28
 ogreenfish:obj29,obj30,obj31,obj32,obj33,obj34,obj35,obj36
 ofloatingblock:obj37,obj38,obj39,obj40,obj41,obj42,obj43,obj44,obj45,obj46,obj47,obj48,obj49,obj50,obj51,obj52,obj53,obj54,obj55,obj56,obj57,obj58,obj59,obj60
 olives:obj61

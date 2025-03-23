@@ -1,0 +1,17 @@
+noop(X):-.
+up_to_door(X):-door_exists(D), no_enemy_above(P, E), block_above(P, B).
+up_to_white_block(X):-white_block_above(P, B), no_enemy_above(P, E), block_above(P, B).
+up_avoid_left_enemy(X):-enemy_left(P, E), no_enemy_above(P, E), block_above(P, B).
+up_avoid_right_enemy(X):-enemy_right(P, E), no_enemy_above(P, E), block_above(P, B).
+up_avoid_left_edge(X):-far_left(P), no_enemy_above(P, E), block_above(P, B).
+up_avoid_right_edge(X):-far_right(P), no_enemy_above(P, E), block_above(P, B).
+down_to_white_block(X):-white_block_below(P, B), no_enemy_below(P, E), block_below(P, B).
+down_avoid_left_enemy(X):-enemy_left(P, E), no_enemy_below(P, E), block_below(P, B).
+down_avoid_right_enemy(X):-enemy_right(P, E), no_enemy_below(P, E), block_below(P, B).
+down_avoid_left_edge(X):-far_left(P), no_enemy_below(P, E), block_below(P, B).
+down_avoid_right_edge(X):-far_right(P), no_enemy_below(P, E), block_below(P, B).
+down(X):-no_door_exists(D), no_enemy_below(P, E), white_block_below(P, B), block_below(P, B), far_left(P), far_right(P).
+left_top(X):-door_exists(D), no_enemy_left(P, E), right_of_door(P, D).
+right_top(X):-door_exists(D), no_enemy_right(P, E), left_of_door(P, D).
+switch_left(X):-no_block_above(P,B), no_block_below(P,B), far_left(P).
+switch_right(X):-no_block_above(P,B), no_block_below(P,B), far_right(P).
