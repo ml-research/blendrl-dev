@@ -81,6 +81,8 @@ class Renderer:
         window_shape = list(self.env_render_shape)
         if self.render_predicate_probs:
             window_shape[0] += PREDICATE_PROBS_COL_WIDTH
+            
+        window_shape[1] += 500
         self.window = pygame.display.set_mode(window_shape, pygame.SCALED)
         self.clock = pygame.time.Clock()
         self.font = pygame.font.SysFont('Calibri', 24)

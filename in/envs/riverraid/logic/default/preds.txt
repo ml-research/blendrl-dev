@@ -10,5 +10,9 @@ left_helicopter:1:image
 up_helicopter:1:image
 down_helicopter:1:image
 fire_at_bridge:1:image
+fire_at_enemy:1:image
+fire_at_helicopter:1:image
 neural_agent:1:image
 logic_agent:1:image
+up_evade:1:image
+down_evade:1:image

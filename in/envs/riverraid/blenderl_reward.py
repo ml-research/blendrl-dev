@@ -27,5 +27,6 @@ def reward_function(self) -> float:
             if distance < 20:
                 reward += 0.5
                 break
+        
 
     return reward

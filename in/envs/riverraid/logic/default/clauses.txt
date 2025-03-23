@@ -1,3 +1,4 @@
+noop(X):-.
 up_fuel(X):-close_by_fuel(P,F).
 down_fuel(X):-right_of_river(P,R),close_by_fuel(P,F).
 up_enemy(X):-higher_than_enemy(P,E),close_by_enemy_ship(P,E).
@@ -9,3 +10,7 @@ left_helicopter(X):-right_of_river(P,R),close_by_helicopter(P,H).
 up_helicopter(X):-higher_than_enemy(P,H),close_by_helicopter(P,H).
 down_helicopter(X):-lower_than_enemy(P,H),close_by_helicopter(P,H).
 fire_at_bridge(X):-close_by_bridge(P,B).
+fire_at_enemy(X):-same_level_enemy(P,E).
+fire_at_helicopter(X):-same_level_helicopter(P,H).
+up_evade(X):-left_of_river(P,R),right_of_river(P,R).
+down_evade(X):-right_of_river(P,R),left_of_river(P,R).

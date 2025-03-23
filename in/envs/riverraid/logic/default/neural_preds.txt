@@ -13,3 +13,5 @@ higher_than_enemy:2:oplayer,oenemyship
 lower_than_enemy:2:oplayer,oenemyship
 higher_than_helicopter:2:oplayer,ohelicopter
 lower_than_helicopter:2:oplayer,ohelicopter
+same_level_enemy:2:oplayer,oriver
+same_level_helicopter:2:oplayer,oriver

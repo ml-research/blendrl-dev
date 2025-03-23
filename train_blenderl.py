@@ -57,7 +57,7 @@ class Args:
     # Algorithm specific arguments
     env_id: str = "Seaquest-v4"
     """the id of the environment"""
-    total_timesteps: int = 20000 #60000000
+    total_timesteps: int = 60000000
     """total timesteps of the experiments"""
     num_envs: int = 20
     """the number of parallel game environments"""

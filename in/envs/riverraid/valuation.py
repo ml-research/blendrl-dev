@@ -23,6 +23,19 @@ def left_of_river(player: th.Tensor, river: th.Tensor) -> th.Tensor:
     return bool_to_probs(player_x < river_x) * river_prob
 
 
+'''def left_of_river(player: th.Tensor, river: th.Tensor) -> th.Tensor:
+    player_y = player[..., 2]
+    river_y = river[..., 2]
+    river_prob = river[:, 0]
+    return bool_to_probs(player_y < river_y) * river_prob
+
+def right_of_river(player: th.Tensor, river: th.Tensor) -> th.Tensor:
+    player_y = player[..., 2]
+    river_y = river[..., 2]
+    river_prob = river[:, 0]
+    return bool_to_probs(player_y > river_y) * river_prob'''
+
+
 def false_predicate(player: th.Tensor) -> th.Tensor:
     return bool_to_probs(th.tensor([False]))
 
@@ -48,17 +61,28 @@ def close_by_bridge(player: th.Tensor, bridge: th.Tensor) -> th.Tensor:
 
 
 def nothing_around(objs: th.Tensor) -> th.Tensor:
-    """Check if there are no objects nearby."""
     enemies = th.cat([objs[:, 5:10], objs[:, 19:22]], dim=1)  # Enemy ships & helicopters
     near_enemies = th.sum(enemies[:, :, 0], dim=1) == 0
     return bool_to_probs(near_enemies)
 
 
 def same_level_river(player: th.Tensor, river: th.Tensor) -> th.Tensor:
-    player_y = player[..., 2]
-    river_y = river[..., 2]
+    player_x = player[..., 2]
+    river_x = river[..., 2]
     river_prob = river[:, 0]
-    return bool_to_probs(abs(player_y - river_y) < 5) * river_prob
+    return bool_to_probs(abs(player_x - river_x) < 5) * river_prob
+
+def same_level_enemy(player: th.Tensor, enemy: th.Tensor) -> th.Tensor:
+    player_x = player[..., 2]
+    enemy_x = enemy[..., 2]
+    enemy_prob = enemy[:, 0]
+    return bool_to_probs(abs(player_x - enemy_x) < 5) * enemy_prob
+
+def same_level_helicopter(player: th.Tensor, helicopter: th.Tensor) -> th.Tensor:
+    player_x = player[..., 2]
+    helicopter_x = helicopter[..., 2]
+    helicopter_prob = helicopter[:, 0]
+    return bool_to_probs(abs(player_x - helicopter_x) < 5) * helicopter_prob
 
 
 def higher_than_enemy(player: th.Tensor, enemy: th.Tensor) -> th.Tensor:
