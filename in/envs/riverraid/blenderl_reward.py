@@ -20,10 +20,6 @@ def reward_function(self) -> float:
     if self.org_reward > 0:
         reward = self.org_reward * 10.0  # High reward for destruction
 
-    # Reward for forward movement
-    elif player.x > player.prev_x:
-        reward = 1.0
-
     # Slight reward for being close to a fuel depot
     for obj in self.objects:
         if "fueldepot" in str(obj).lower():

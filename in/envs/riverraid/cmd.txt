@@ -2,4 +2,4 @@ python train_blenderl.py --env-name riverraid --joint-training --total_timesteps
 
 python play_gui.py --env-name riverraid --agent-path
 
-/out/runs/riverraid_softmax_blender_logic_lr_0.00025_llr_0.00025_blr_0.00025_gamma_0.99_bentcoef_0.01_numenvs_2_steps_32_pretrained_False_joint_True_0
+out/runs/riverraid_softmax_blender_logic_lr_0.00025_llr_0.00025_blr_0.00025_gamma_0.99_bentcoef_0.01_numenvs_2_steps_32_pretrained_False_joint_True_0
