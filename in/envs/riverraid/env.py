@@ -98,14 +98,13 @@ class NudgeEnv(NudgeBaseEnv):
         ), self.extract_neural_state(raw_state)
         return logic_state.unsqueeze(0), neural_state
 
-    def step(self, action, is_mapped=False):
-        raw_state, reward, truncations, done, infos = self.env.step(action)
+    def step(self, action, is_mapped: bool = False):
+        obs, reward, truncations, done, infos = self.env.step(action)
         state = self.env.objects
-        self.ocatari_state = state
-        logic_state, neural_state = self.extract_logic_state(
-            state
-        ), self.extract_neural_state(raw_state)
-        return logic_state.unsqueeze(0), neural_state, reward, done, truncations, infos
+        raw_state = obs  # self.env.dqn_obs
+        logic_state, neural_state = self.convert_state(state, raw_state)
+        logic_state = logic_state.unsqueeze(0)
+        return (logic_state, neural_state), reward, done, truncations, infos
 
     def extract_logic_state(self, input_state):
         state = th.zeros((self.n_objects, self.n_features), dtype=th.int32)
@@ -120,8 +119,9 @@ class NudgeEnv(NudgeBaseEnv):
             if obj.category == "Time":
                 state[idx] = th.tensor([1, obj.value, 0, 0])
             else:
+                #print(obj.orientation)
                 orientation = (
-                    obj.orientation.value if obj.orientation is not None else 0
+                    obj.orientation if obj.orientation is not None else 0
                 )
                 state[idx] = th.tensor([1, *obj.center, orientation])
             obj_count[obj.category] += 1

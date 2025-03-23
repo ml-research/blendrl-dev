@@ -297,6 +297,7 @@ def main():
                         print("Environment {} has been reset".format(k))
               
             # Save the model      
+            #print(f"global_step={global_step}, save_step_bar={save_step_bar}")
             if global_step > save_step_bar:
                 rtpt.step()
                 checkpoint_path = checkpoint_dir / f"step_{save_step_bar}.pth"

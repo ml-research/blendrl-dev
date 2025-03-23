@@ -187,6 +187,7 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
             infos.append(info)
         end = time.time()
 
+        #print("STEP OUTPUT:", type(logic_states), type(neural_states), type(rewards), type(truncations), type(dones), type(infos))
         return (
             (torch.stack(logic_states), torch.stack(neural_states)),
             rewards,

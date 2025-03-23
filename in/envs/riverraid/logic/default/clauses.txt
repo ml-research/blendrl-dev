@@ -1,6 +1,5 @@
 up_fuel(X):-close_by_fuel(P,F).
-left_to_fuel(X):-right_of_river(P,R),close_by_fuel(P,F).
-right_to_fuel(X):-left_of_river(P,R),close_by_fuel(P,F).
+down_fuel(X):-right_of_river(P,R),close_by_fuel(P,F).
 up_enemy(X):-higher_than_enemy(P,E),close_by_enemy_ship(P,E).
 down_enemy(X):-lower_than_enemy(P,E),close_by_enemy_ship(P,E).
 right_enemy(X):-left_of_river(P,R),close_by_enemy_ship(P,E).
