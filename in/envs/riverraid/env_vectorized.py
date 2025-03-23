@@ -236,7 +236,7 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
         Returns:
             torch.Tensor: Neural state.
         """
-        return raw_input_state
+        return raw_input_state.to(dtype=torch.float32)
 
     def close(self):
         """

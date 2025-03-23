@@ -129,7 +129,7 @@ class NudgeEnv(NudgeBaseEnv):
         return state
 
     def extract_neural_state(self, raw_input_state):
-        return torch.tensor(raw_input_state).unsqueeze(0)
+        return torch.tensor(raw_input_state, dtype=torch.float32).unsqueeze(0)
 
     def close(self):
         self.env.close()
