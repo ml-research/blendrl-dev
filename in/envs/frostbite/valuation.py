@@ -115,6 +115,9 @@ def door_exists(door: th.Tensor) -> th.Tensor:
     result = door[..., 0] == 1
     return bool_to_probs(result)
 
+def no_door_exists(door: th.Tensor) -> th.Tensor:
+    return bool_to_probs(1-door_exists(door))
+
 def block_above(player: th.Tensor, block: th.Tensor) -> th.Tensor:
     """True iff there is a block right above the player"""
     player_x = player[..., 1]
@@ -168,3 +171,9 @@ def far_left(player:th.Tensor) -> th.Tensor:
     player_x = player[..., 1]
     result = th.clip((30 - player_x) / 30, 0, 1)
     return result
+
+def neural_agent_value(player:th.Tensor) -> th.Tensor:
+    return bool_to_probs(0)
+
+def logic_agent_value(player:th.Tensor) -> th.Tensor:
+    return bool_to_probs(1)

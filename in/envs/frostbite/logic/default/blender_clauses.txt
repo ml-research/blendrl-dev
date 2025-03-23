@@ -1,2 +1,2 @@
-neural_agent(X):-0.
-logic_agent(X):-1.
+neural_agent(X):-neural_agent_value(P).
+logic_agent(X):-logic_agent_value(P).

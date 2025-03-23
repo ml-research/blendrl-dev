@@ -18,3 +18,6 @@ block_below:2:oplayer,ofloatingblock
 left_of_door:2:oplayer,odoor
 right_of_door:2:oplayer,odoor
 door_exists:1:odoor
+no_door_exists:1:odoor
+neural_agent_value:1:oplayer
+logic_agent_value:1:oplayer
