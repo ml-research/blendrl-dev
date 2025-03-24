@@ -1,4 +1,5 @@
 from typing import Sequence
+import numpy as np
 import torch
 from nudge.env import NudgeBaseEnv
 from ocatari.core import OCAtari
