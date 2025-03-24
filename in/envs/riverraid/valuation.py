@@ -50,19 +50,22 @@ def nothing_around(objs: th.Tensor) -> th.Tensor:
     near_enemies = th.sum(enemies[:, :, 0], dim=1) == 0
     return bool_to_probs(near_enemies)
 
-def same_level_enemy(player: th.Tensor, enemy: th.Tensor) -> th.Tensor:
+def same_level_enemy_ship(player: th.Tensor, enemy: th.Tensor) -> th.Tensor:
     return _same_level(player, enemy)
 
 def same_level_helicopter(player: th.Tensor, helicopter: th.Tensor) -> th.Tensor:
     return _same_level(player, helicopter)
 
+def same_level_enemy_base(player: th.Tensor, enemy: th.Tensor) -> th.Tensor:
+    return _same_level(player, enemy)
+
 def same_level_bridge(player: th.Tensor, bridge: th.Tensor) -> th.Tensor:
     return _same_level(player, bridge)
 
-def right_of_enemy(player: th.Tensor, enemy: th.Tensor) -> th.Tensor:
+def right_of_enemy_ship(player: th.Tensor, enemy: th.Tensor) -> th.Tensor:
     return _higher_than(player, enemy)
 
-def left_of_enemy(player: th.Tensor, enemy: th.Tensor) -> th.Tensor:
+def left_of_enemy_ship(player: th.Tensor, enemy: th.Tensor) -> th.Tensor:
     return _lower_than(player, enemy)
 
 def right_of_helicopter(player: th.Tensor, helicopter: th.Tensor) -> th.Tensor:
@@ -70,6 +73,12 @@ def right_of_helicopter(player: th.Tensor, helicopter: th.Tensor) -> th.Tensor:
 
 def left_of_helicopter(player: th.Tensor, helicopter: th.Tensor) -> th.Tensor:
     return _lower_than(player, helicopter)
+
+def right_of_enemy_base(player: th.Tensor, enemy: th.Tensor) -> th.Tensor:
+    return _higher_than(player, enemy)
+
+def left_of_enemy_base(player: th.Tensor, enemy: th.Tensor) -> th.Tensor:
+    return _lower_than(player, enemy)
 
 def right_of_bridge(player: th.Tensor, bridge: th.Tensor) -> th.Tensor:
     return _higher_than(player, bridge)
