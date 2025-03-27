@@ -31,7 +31,7 @@ from nudge.utils import load_model_train
 # Log in to your W&B account
 import wandb
 
-OUT_PATH = Path("out_freeway/")
+OUT_PATH = Path("out_spaceinvaders/")
 IN_PATH = Path("in/")
 
 torch.set_num_threads(5)
@@ -57,7 +57,7 @@ class Args:
     """whether to capture videos of the agent performances (check out `videos` folder)"""
 
     # Algorithm specific arguments
-    env_id: str = "ALE/Freeway-v5"
+    env_id: str = "ALE/SpaceInvaders-v5"
     """the id of the environment"""
     total_timesteps: int = 60000000
     """total timesteps of the experiments"""
@@ -99,7 +99,7 @@ class Args:
     """the number of iterations (computed in runtime)"""
 
     # added
-    env_name: str = "freeway"
+    env_name: str = "spaceinvaders"
     """the name of the environment"""
     algorithm: str = "blender"
     """the algorithm used in the agent"""
