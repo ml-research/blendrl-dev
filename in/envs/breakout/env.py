@@ -1,10 +1,9 @@
 from typing import Sequence
-import torch
+import torch as th
 from nudge.env import NudgeBaseEnv
 from ocatari.core import OCAtari
-from ocatari.ram.pong import MAX_NB_OBJECTS
+from ocatari.ram.breakout import MAX_NB_OBJECTS
 from blendrl.env_utils import make_env
-import numpy as np
 
 
 class NudgeEnv(NudgeBaseEnv):
@@ -26,7 +25,7 @@ class NudgeEnv(NudgeBaseEnv):
         self.n_actions = len(self.pred2action)
         self.n_raw_actions = 4
         self.n_objects = 110
-        self.n_features = 4
+        self.n_features = 4 #x-pos, y-pos, old x-pos, old y-pos
         self.seed = seed
        
         # Compute index offsets. Needed to deal with multiple same-category objects
@@ -52,18 +51,19 @@ class NudgeEnv(NudgeBaseEnv):
         return (logic_state, neural_state), reward, done, truncations, infos
 
     def extract_logic_state(self, raw_state):
-        logic_state = np.zeros((self.n_objects, self.n_features))
+        logic_state = th.zeros((self.n_objects, self.n_features), dtype=th.float32)
         for idx, obj in enumerate(raw_state):
-            logic_state[idx][-4:] = np.array(obj.h_coords).flatten()
+            logic_state[idx][-4:] = th.tensor(obj.h_coords).flatten()
 
         if(raw_state[1].category == "NoObject"):
+            #if ball is not present (reliant on slots)
             logic_state[1][0] = -1
         
-        return torch.tensor(logic_state, dtype=torch.float32)
+        return logic_state
 
 
     def extract_neural_state(self, raw_state):
-        return torch.Tensor(raw_state).unsqueeze(0)
+        return th.Tensor(raw_state).unsqueeze(0)
 
     def close(self):
         self.env.close()

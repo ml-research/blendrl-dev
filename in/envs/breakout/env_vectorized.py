@@ -1,11 +1,10 @@
 from typing import Sequence
-import torch
+import torch as th
 from blendrl.env_vectorized import VectorizedNudgeBaseEnv
 from ocatari.core import OCAtari
-from ocatari.ram.pong import MAX_NB_OBJECTS
+from ocatari.ram.breakout import MAX_NB_OBJECTS
 import time
 from blendrl.env_utils import make_env
-import numpy as np
 
 class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
     """
@@ -64,7 +63,7 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
         self.n_actions = len(self.pred2action)
         self.n_raw_actions = 4
         self.n_objects = 110
-        self.n_features = 4
+        self.n_features = 4 #x-pos, y-pos, old x-pos, old y-pos
         self.seed = seed
 
         # Compute index offsets. Needed to deal with multiple same-category objects
@@ -87,7 +86,7 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
         print("Env is being reset...")
         for env in self.envs:
             obs, state = env.reset(seed=seed_i)
-            obs = torch.tensor(obs).float()
+            obs = th.tensor(obs).float()
             state = env.objects
             raw_state = obs
             logic_state, neural_state = self.extract_logic_state(state), self.extract_neural_state(raw_state)
@@ -95,7 +94,7 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
             neural_states.append(neural_state)
             seed_i += 1
         print("Env reset is done.")
-        return torch.stack(logic_states), torch.stack(neural_states)
+        return th.stack(logic_states), th.stack(neural_states)
 
     def step(self, actions, is_mapped=False):
         """
@@ -119,7 +118,7 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
             action = actions[i]
             # Step in the environment
             obs, reward, truncation, done, info = env.step(action)
-            raw_state = torch.tensor(obs).float()
+            raw_state = th.tensor(obs).float()
             state = env.objects
             logic_state, neural_state = self.convert_state(state, raw_state)
             logic_states.append(logic_state)
@@ -135,7 +134,7 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
         end = time.time()
         diff = end - start
         return (
-            (torch.stack(logic_states), torch.stack(neural_states)),
+            (th.stack(logic_states), th.stack(neural_states)),
             rewards,
             truncations,
             dones,
@@ -143,14 +142,15 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
         )
 
     def extract_logic_state(self, raw_state):
-        logic_state = np.zeros((self.n_objects, self.n_features))
+        logic_state = th.zeros((self.n_objects, self.n_features), dtype=th.float32)
         for idx, obj in enumerate(raw_state):
-            logic_state[idx][-4:] = np.array(obj.h_coords).flatten()
+            logic_state[idx][-4:] = th.tensor(obj.h_coords).flatten()
 
         if(raw_state[1].category == "NoObject"):
+            #if ball is not present (reliant on slots)
             logic_state[1][0] = -1
         
-        return torch.tensor(logic_state, dtype=torch.float32)
+        return logic_state
         
 
     def extract_neural_state(self, raw_input_state):
