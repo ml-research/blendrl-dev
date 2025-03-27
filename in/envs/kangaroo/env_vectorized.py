@@ -56,18 +56,6 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
         super().__init__(mode)
         # set up multiple envs
         self.n_envs = n_envs
-        # self.envs = [
-        #     HackAtari(
-        #         env_name="ALE/Kangaroo-v5",
-        #         mode="ram",
-        #         obs_mode="ori",
-        #         modifs=[("disable_coconut"), ("random_init"), ("change_level0")],
-        #         rewardfunc_path="in/envs/kangaroo/blenderl_reward.py",
-        #         render_mode=render_mode,
-        #         render_oc_overlay=render_oc_overlay,
-        #     )
-        #     for i in range(n_envs)
-        # ]
         self.envs = [
             OCAtari(
                 env_name="ALE/Kangaroo-v5",
@@ -175,8 +163,6 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
             infos.append(info)
         end = time.time()
         diff = end - start
-        # print("Time taken for step: ", diff)
-
         end = time.time()
         diff = end - start
         # print("Time taken for step: ", diff)
@@ -191,27 +177,6 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
         )
 
     def extract_logic_state(self, raw_state):
-        """
-            Extracts the logic state from the input state.
-                Args:
-                    raw_state (list): List of objects in the environment.
-                Returns:
-                    torch.Tensor: Logic state.
-
-                Comment:
-                    in ocatari/ram/kangaroo.py :
-                    MAX_ESSENTIAL_OBJECTS = {
-                        'Player': 1,
-                        'Child': 1,
-                        'Monkey': 4,
-                        'FallingCoconut': 1,
-                        'ThrownCoconut': 3,
-                        'Fruit': 3,
-                        'Bell': 1,
-                        'Ladder': 6,
-                        'Platform': 20,
-        }
-        """
         state = th.zeros((self.n_objects, self.n_features), dtype=th.int32)
 
         obj_count = {k: 0 for k in MAX_ESSENTIAL_OBJECTS.keys()}

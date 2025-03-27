@@ -148,19 +148,6 @@ def _close_by(player: th.Tensor, obj: th.Tensor, temperature: float = 6.0) -> th
     return sigmoid_smoothing(dist < th, temperature) * _in_field(obj)
 
 
-
-#def _close_by(player: th.Tensor, obj: th.Tensor, temperature: float = 5.0) -> th.Tensor:
-    # PLAYER_WIDTH, PLAYER_HEIGHT = 8, 24
-    # player_x, player_y = player[:, 1], player[:, 2]
-    # obj_x, obj_y = obj[:, 1], obj[:, 2]
-    # min_dist_x = th.tensor((PLAYER_WIDTH / 2) + (obj_w / 2), dtype=th.float32)
-    # min_dist_y = th.tensor((PLAYER_HEIGHT / 2) + (obj_h / 2), dtype=th.float32)
-    # min_dist = (min_dist_x ** 2 + min_dist_y ** 2).sqrt()
-    # dist = ((player_x - obj_x).pow(2) + (player_y - obj_y).pow(2)).sqrt()
-    # close_prob = th.sigmoid(temperature * (min_dist * 1.2 - dist))
-    # return close_prob
-
-
 def same_level(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
     obj1_y = player[..., 2]
     obj2_y = obj[..., 2]
