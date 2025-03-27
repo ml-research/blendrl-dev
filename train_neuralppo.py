@@ -291,22 +291,28 @@ def main():
             #     image = wandb.Image(next_obs_array[0][i], caption=f"State at global_step={global_step}_{i}")
             #     wandb.log({"state_image": image})
         
-            for k, info_ in enumerate(infos):
-                if "final_info" in info_: # or next_done.any():
-                    info = info_['final_info']
-                    # final_info = info['final_info']
-                    if "episode" in info:
-                        # print(f"global_step={global_step}, episodic_return={info['episode']['r']}, episodic_length={info['episode']['l']}")
-                        print(f"env={k}, global_step={global_step}, episodic_game_reward={np.round(episodic_game_rewards[k].detach().cpu().numpy(), 2)}, episodic_return={info['episode']['r']}, episodic_length={info['episode']['l']}")
-                        writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                        writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
-                        episodic_returns.append(info["episode"]["r"])
-                        episodic_lengths.append(info["episode"]["l"])
-                        
-                        # save the game reward and reset
-                        writer.add_scalar("charts/episodic_game_reward", episodic_game_rewards[k], global_step)
-                        episodic_game_rewards[k] = 0
-                        print("Environment {} has been reset".format(k))
+            for k, info in enumerate(infos):
+                if "episode" in info:
+                    print(
+                        f"env={k}, global_step={global_step}, episodic_game_return={np.round(episodic_game_rewards[k].detach().cpu().numpy(), 2)}, episodic_return={info['episode']['r']}, episodic_length={info['episode']['l']}"
+                    )
+                    writer.add_scalar(
+                        "charts/episodic_return", info["episode"]["r"], global_step
+                    )
+                    writer.add_scalar(
+                        "charts/episodic_length", info["episode"]["l"], global_step
+                    )
+                    episodic_returns.append(info["episode"]["r"])
+                    episodic_lengths.append(info["episode"]["l"])
+
+                    # save the game reward and reset
+                    writer.add_scalar(
+                        "charts/episodic_game_return",
+                        episodic_game_rewards[k],
+                        global_step,
+                    )
+                    episodic_game_rewards[k] = 0
+                    print("Environment {} has been reset".format(k))
               
             # Save the model      
             if global_step > save_step_bar:
