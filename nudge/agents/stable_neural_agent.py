@@ -5,6 +5,8 @@ import random
 import pickle
 from pathlib import Path
 
+from stable_baselines3 import PPO
+
 from nsfr.utils.common import load_module
 from torch.distributions import Categorical
 from nudge.env import NudgeBaseEnv

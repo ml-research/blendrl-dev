@@ -62,7 +62,7 @@ class Renderer:
         self.fps = fps
 
         try:
-            self.action_meanings = self.env.env.get_action_meanings()
+            self.action_meanings = self.env.env.unwrapped.get_action_meanings()
             self.keys2actions = self.env.env.unwrapped.get_keys_to_action()
         except Exception:
             print(
@@ -158,7 +158,8 @@ class Renderer:
         pressed_keys.sort()
         pressed_keys = tuple(pressed_keys)
         if pressed_keys in self.keys2actions.keys():
-            return self.keys2actions[pressed_keys]
+            action_name = self.keys2actions[pressed_keys].name
+            return self.action_meanings.index(action_name)
         else:
             return 0  # NOOP
 

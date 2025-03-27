@@ -18,6 +18,7 @@ from torch.distributions.categorical import Categorical
 from torch.distributions import Categorical
 from nsfr.utils.common import load_module
 from nsfr.common import get_nsfr_model
+from neumann.common import get_neumann_model
 
 from utils import get_blender, load_cleanrl_agent
 from nudge.utils import print_program
@@ -417,7 +418,6 @@ class BlenderActorCritic(nn.Module):
         module = load_module(mlp_module_path)
         self.visual_neural_actor = load_cleanrl_agent(pretrained=False, device=device)
         if reasoner == "neumann":
-            from neumann.common import get_neumann_model
             self.logic_actor = get_neumann_model(
                 env.name, rules, device=device, train=True, explain=explain
             )

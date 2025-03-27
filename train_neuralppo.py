@@ -13,7 +13,6 @@ from torch.utils.tensorboard import SummaryWriter
 
 
 # added
-from agents.blender_agent import NsfrActorCritic
 from cleanrl.cleanrl.ppo_atari import AgentListEnvs
 from blendrl.env_vectorized import VectorizedNudgeBaseEnv
 from nudge.utils import save_hyperparams
@@ -56,7 +55,7 @@ class Args:
     """whether to capture videos of the agent performances (check out `videos` folder)"""
 
     # Algorithm specific arguments
-    env_id: str = "Seaquest-v4"
+    env_id: str = "Kangaroo-v5"
     """the id of the environment"""
     total_timesteps: int = 60000000
     """total timesteps of the experiments"""
@@ -98,7 +97,7 @@ class Args:
     """the number of iterations (computed in runtime)"""
     
     # added
-    env_name: str = "seaquest"
+    env_name: str = "kangaroo"
     """the name of the environment"""
     algorithm: str = "blender"
     """the algorithm used in the agent"""

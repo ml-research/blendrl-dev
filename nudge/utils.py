@@ -220,6 +220,8 @@ def print_program(agent, mode="softor"):
         
 def print_program_nsfr(actor, mode):
     nsfr = actor
+    print("Number of clauses:", len(nsfr.clauses))
+    print("Clauses:", nsfr.clauses)
     if mode == "argmax":
         C = nsfr.clauses
         Ws_softmaxed = torch.softmax(nsfr.im.W, 1)

@@ -1,26 +1,16 @@
-import os
-import random
-import time
 from dataclasses import dataclass
-
-import gymnasium as gym
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import tyro
 from torch.utils.tensorboard import SummaryWriter
-
-
 # added
-from agents.blender_agent import NsfrActorCritic
+from agents.logic_agent import NsfrActorCritic
 from blendrl.env_vectorized import VectorizedNudgeBaseEnv
 from nudge.utils import save_hyperparams
 import os
-import sys
 import time
 from pathlib import Path
-
 import pickle
 import random
 import numpy as np
@@ -55,7 +45,7 @@ class Args:
     """whether to capture videos of the agent performances (check out `videos` folder)"""
 
     # Algorithm specific arguments
-    env_id: str = "Seaquest-v4"
+    env_id: str = "Kangaroo-v5"
     """the id of the environment"""
     total_timesteps: int = 60000000
     """total timesteps of the experiments"""
@@ -97,7 +87,7 @@ class Args:
     """the number of iterations (computed in runtime)"""
     
     # added
-    env_name: str = "seaquest"
+    env_name: str = "kangaroo"
     """the name of the environment"""
     algorithm: str = "blender"
     """the algorithm used in the agent"""
@@ -176,7 +166,7 @@ def main():
     agent = NsfrActorCritic(envs, args.rules, device)
     if args.pretrained:
         # load neural agent weights
-        agent.visual_neural_actor.load_state_dict(torch.load("models/neural_ppo_agent_Seaquest-v4.pth"))
+        agent.visual_neural_actor.load_state_dict(torch.load("models/neural_ppo_agent_Kangaroo-v5.pth"))
         print("Pretrained neural agent loaded!!!")
         # load logic agent weights
         # agent = load_logic_ppo(path="models/logic_ppo_agent_Seaquest-v4.pth", agent=agent)

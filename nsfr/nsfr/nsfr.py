@@ -2,6 +2,7 @@ import numpy as np
 import torch.nn as nn
 import torch
 from nsfr.utils.logic import get_index_by_predname
+from nsfr.utils.torch import softor
 
 
 class NSFReasoner(nn.Module):
@@ -85,8 +86,10 @@ class NSFReasoner(nn.Module):
         """Print a summary of logic programs using continuous weights."""
         # print('====== LEARNED PROGRAM ======')
         C = self.clauses
-        # a = self.im.W
         Ws_softmaxed = torch.softmax(self.im.W, 1)
+        w = softor(Ws_softmaxed, dim=0)
+        for i, c in enumerate(C):
+            print('C_' + str(i) + ': ', np.round(w[i].detach().cpu().item(), 2), C[i])
         
         # print("Raw rule weights: ")
         # print(self.im.W)
@@ -94,10 +97,10 @@ class NSFReasoner(nn.Module):
         # print(Ws_softmaxed)
 
         # print("Summary: ")
-        for i, W_ in enumerate(Ws_softmaxed):
-            max_i = np.argmax(W_.detach().cpu().numpy())
-            print('C_' + str(i) + ': ',
-                  C[max_i], 'W_' + str(i) + ':', round(W_[max_i].detach().cpu().item(), 3))
+        # for i, W_ in enumerate(Ws_softmaxed):
+        #     max_i = np.argmax(W_.detach().cpu().numpy())
+        #     print('C_' + str(i) + ': ',
+        #           C[max_i], 'W_' + str(i) + ':', round(W_[max_i].detach().cpu().item(), 3))
 
     def print_valuations(self, predicate: str = None, min_value: float = 0,
                          initial_valuation: bool = False):

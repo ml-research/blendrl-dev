@@ -1,0 +1,2 @@
+neural_agent(X):-on_left(O2,O1).
+logic_agent(X):-on_right(O2,O1).

@@ -31,7 +31,7 @@ from nudge.utils import load_model_train
 # Log in to your W&B account
 import wandb
 
-OUT_PATH = Path("out/")
+OUT_PATH = Path("out_freeway/")
 IN_PATH = Path("in/")
 
 torch.set_num_threads(5)
@@ -57,7 +57,7 @@ class Args:
     """whether to capture videos of the agent performances (check out `videos` folder)"""
 
     # Algorithm specific arguments
-    env_id: str = "Seaquest-v4"
+    env_id: str = "ALE/Freeway-v5"
     """the id of the environment"""
     total_timesteps: int = 60000000
     """total timesteps of the experiments"""
@@ -99,7 +99,7 @@ class Args:
     """the number of iterations (computed in runtime)"""
 
     # added
-    env_name: str = "seaquest"
+    env_name: str = "freeway"
     """the name of the environment"""
     algorithm: str = "blender"
     """the algorithm used in the agent"""
@@ -107,8 +107,8 @@ class Args:
     """the mode for the blend (logic or neural)"""
     blend_function: str = "softmax"
     """the function to blend the neural and logic agents: softmax or gumbel_softmax"""
-    actor_mode: str = "hybrid"
-    """the mode for the agent"""
+    actor_mode: str = "logic"
+    """the mode for the agent (hybrid logic or neural)"""
     rules: str = "default"
     """the ruleset used in the agent"""
     save_steps: int = 5000000
@@ -282,7 +282,6 @@ def main():
     next_logic_obs = next_logic_obs.to(device)
     next_obs = torch.Tensor(next_obs).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
-
     for iteration in range(1, args.num_iterations + 1):
         # Annealing the rate if instructed to do so.
         if args.anneal_lr:
@@ -294,8 +293,8 @@ def main():
             # update rtpt
             global_step += args.num_envs
             obs[step] = next_obs
-            # print(logic_obs.shape)
-            # print(next_logic_obs.shape)
+            #print(logic_obs.shape)
+            #print(next_logic_obs.shape)
             logic_obs[step] = next_logic_obs
             dones[step] = next_done
 

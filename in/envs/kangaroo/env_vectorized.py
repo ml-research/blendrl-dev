@@ -1,17 +1,37 @@
 import time
 from typing import Sequence
 import torch
-from HackAtari.hackatari.games import kangaroo
 from blendrl.env_vectorized import VectorizedNudgeBaseEnv
-from blendrl.env_utils import make_env
-from hackatari.core import HackAtari
 import torch as th
 from ocatari.ram.kangaroo import MAX_ESSENTIAL_OBJECTS
 import gymnasium as gym
+from ocatari.core import OCAtari
+from rtpt import RTPT
 
 import time
 
-from blendrl.env_utils import kangaroo_modifs
+from stable_baselines3.common.atari_wrappers import (  # isort:skip
+    ClipRewardEnv,
+    EpisodicLifeEnv,
+    FireResetEnv,
+    MaxAndSkipEnv,
+    NoopResetEnv,
+)
+
+
+def make_env(env):
+    env = gym.wrappers.RecordEpisodeStatistics(env)
+    env = gym.wrappers.Autoreset(env)
+    env = NoopResetEnv(env, noop_max=30)
+    env = MaxAndSkipEnv(env, skip=4)
+    env = EpisodicLifeEnv(env)
+    if "FIRE" in env.unwrapped.get_action_meanings():
+        env = FireResetEnv(env)
+    env = ClipRewardEnv(env)
+    env = gym.wrappers.ResizeObservation(env, (84, 84))
+    env = gym.wrappers.GrayscaleObservation(env)
+    env = gym.wrappers.FrameStackObservation(env, 4)
+    return env
 
 
 class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
@@ -34,6 +54,13 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
         "right": 3,
         "left": 4,
         "down": 5,
+        "up_right": 6,
+        "up_left": 7,
+        "up_fire": 10,
+        "left_fire": 12,
+        "right_fire": 11,
+        "up_right_fire": 14,
+        "up_left_fire": 15
     }
     pred_names: Sequence
 
@@ -59,23 +86,32 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
         # set up multiple envs
         self.n_envs = n_envs
         # initialize each HackAtari environment
+        # self.envs = [
+        #     HackAtari(
+        #         env_name="ALE/Kangaroo-v5",
+        #         mode="ram",
+        #         obs_mode="ori",
+        #         modifs=[("disable_coconut"), ("random_init"), ("change_level0")],
+        #         rewardfunc_path="in/envs/kangaroo/blenderl_reward.py",
+        #         render_mode=render_mode,
+        #         render_oc_overlay=render_oc_overlay,
+        #     )
+        #     for i in range(n_envs)
+        # ]
         self.envs = [
-            HackAtari(
+            OCAtari(
                 env_name="ALE/Kangaroo-v5",
                 mode="ram",
                 obs_mode="ori",
-                modifs=kangaroo_modifs,
-                rewardfunc_path="in/envs/kangaroo/blenderl_reward.py",
                 render_mode=render_mode,
-                render_oc_overlay=render_oc_overlay,
-            )
-            for i in range(n_envs)
+                render_oc_overlay=render_oc_overlay)
+            for _ in range(n_envs)
         ]
         # apply wrapper to _env
         for i in range(n_envs):
             self.envs[i]._env = make_env(self.envs[i]._env)
 
-        self.n_actions = 6
+        self.n_actions = len(self.pred2action)
         self.n_raw_actions = 18
         self.n_objects = 49
         self.n_features = 4  # visible, x-pos, y-pos, right-facing
