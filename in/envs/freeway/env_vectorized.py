@@ -92,7 +92,7 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
         self.n_actions = len(self.pred2action)
         self.n_raw_actions = 3
         self.n_objects = 12
-        self.n_features = 4
+        self.n_features = 2
         self.seed = seed
 
         # Compute index offsets. Needed to deal with multiple same-category objects
@@ -210,7 +210,7 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
             if obj.category not in self.relevant_objects:
                 continue
             idx = self.obj_offsets[obj.category] + obj_count[obj.category]
-            state[idx] = th.Tensor([1,0,*obj.center])
+            state[idx] = th.Tensor([*obj.center])
             obj_count[obj.category] += 1
         #print(f"Logic state: {state}")
         return state
