@@ -3,6 +3,7 @@ import torch
 from nudge.env import NudgeBaseEnv
 from ocatari.core import OCAtari
 from hackatari.core import HackAtari
+from blendrl.env_utils import make_env
 import numpy as np
 import torch as th
 from ocatari.ram.kangaroo import MAX_ESSENTIAL_OBJECTS
@@ -13,44 +14,7 @@ from stable_baselines3.common.vec_env import VecFrameStack
 
 from utils import load_cleanrl_envs
 
-
-from stable_baselines3.common.atari_wrappers import (  # isort:skip
-    ClipRewardEnv,
-    EpisodicLifeEnv,
-    FireResetEnv,
-    MaxAndSkipEnv,
-    NoopResetEnv,
-)
-
-
-def make_env(env):
-    env = gym.wrappers.RecordEpisodeStatistics(env)
-    env = gym.wrappers.AutoResetWrapper(env)
-    env = NoopResetEnv(env, noop_max=30)
-    env = MaxAndSkipEnv(env, skip=4)
-    env = EpisodicLifeEnv(env)
-    if "FIRE" in env.unwrapped.get_action_meanings():
-        env = FireResetEnv(env)
-    env = ClipRewardEnv(env)
-    env = gym.wrappers.ResizeObservation(env, (84, 84))
-    env = gym.wrappers.GrayScaleObservation(env)
-    env = gym.wrappers.FrameStack(env, 4)
-    return env
-
-
-def make_env_ori(env):
-    env = gym.wrappers.RecordEpisodeStatistics(env)
-    env = gym.wrappers.AutoResetWrapper(env)
-    env = NoopResetEnv(env, noop_max=30)
-    env = MaxAndSkipEnv(env, skip=4)
-    env = EpisodicLifeEnv(env)
-    if "FIRE" in env.unwrapped.get_action_meanings():
-        env = FireResetEnv(env)
-    env = ClipRewardEnv(env)
-    # env = gym.wrappers.ResizeObservation(env, (84, 84))
-    # env = gym.wrappers.GrayScaleObservation(env)
-    env = gym.wrappers.FrameStack(env, 4)
-    return env
+from blendrl.env_utils import kangaroo_modifs
 
 
 class NudgeEnv(NudgeBaseEnv):
@@ -94,22 +58,11 @@ class NudgeEnv(NudgeBaseEnv):
             env_name="ALE/Kangaroo-v5",
             mode="ram",
             obs_mode="ori",
-            modifs=[
-                ("disable_coconut"),
-                ("random_init"),
-                ("change_level0"),
-            ],  # modifs=[("disable_coconut"),  ("change_level0")],\
-            # modifs=[("disable_coconut"), ("change_level0"), ("invert_ladders")],\
+            modifs=kangaroo_modifs,
             rewardfunc_path="in/envs/kangaroo/blenderl_reward.py",
             render_mode=render_mode,
             render_oc_overlay=render_oc_overlay,
         )
-
-        # self.env_ori = HackAtari(env_name="ALE/Kangaroo-v5", mode="ram", obs_mode="ori",\
-        #     modifs=[("disable_coconut"), ("random_init")], #, ("change_level0")],\
-        #     rewardfunc_path="in/envs/kangaroo/blenderl_reward.py",\
-        #     render_mode=render_mode, render_oc_overlay=render_oc_overlay)
-
         # apply wrapper to _env
         self.env._env = make_env(self.env._env)
         # self.env_ori._env = make_env_ori(self.env_ori._env)

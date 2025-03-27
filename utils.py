@@ -3,7 +3,6 @@ from collections import OrderedDict
 import torch
 import gymnasium as gym
 from nsfr.common import get_nsfr_model, get_blender_nsfr_model
-from neumann.common import get_neumann_model, get_blender_neumann_model
 from nsfr.utils.common import load_module
 import torch
 import torch.nn as nn
@@ -102,6 +101,7 @@ def get_blender(env, blender_rules, device, train=True, blender_mode='logic', re
         if reasoner == 'nsfr':
             return get_blender_nsfr_model(env.name, blender_rules, device, train=train, explain=explain)
         elif reasoner == 'neumann':
+            from neumann.common import get_neumann_model, get_blender_neumann_model
             return get_blender_neumann_model(env.name, blender_rules, device, train=train, explain=explain)
     if blender_mode == 'neural':
         net = NeuralBlenderActor()

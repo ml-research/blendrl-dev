@@ -3,31 +3,10 @@ import torch
 from blendrl.env_vectorized import VectorizedNudgeBaseEnv
 from hackatari.core import HackAtari
 import torch as th
-from ocatari.ram.donkeykong import MAX_ESSENTIAL_OBJECTS
+from ocatari.ram.donkeykong import MAX_NB_OBJECTS
 import gymnasium as gym
+from blendrl.env_utils import make_env
 
-
-from stable_baselines3.common.atari_wrappers import (  # isort:skip
-    ClipRewardEnv,
-    EpisodicLifeEnv,
-    FireResetEnv,
-    MaxAndSkipEnv,
-    NoopResetEnv,
-)
-
-def make_env(env):
-    env = gym.wrappers.RecordEpisodeStatistics(env)
-    env = gym.wrappers.AutoResetWrapper(env)
-    env = NoopResetEnv(env, noop_max=30)
-    env = MaxAndSkipEnv(env, skip=4)
-    env = EpisodicLifeEnv(env)
-    if "FIRE" in env.unwrapped.get_action_meanings():
-        env = FireResetEnv(env)
-    # env = ClipRewardEnv(env)
-    env = gym.wrappers.ResizeObservation(env, (84, 84))
-    env = gym.wrappers.GrayScaleObservation(env)
-    env = gym.wrappers.FrameStack(env, 4)
-    return env
 
 
 class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
@@ -84,10 +63,10 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
         # Compute index offsets. Needed to deal with multiple same-category objects
         self.obj_offsets = {}
         offset = 0
-        for (obj, max_count) in MAX_ESSENTIAL_OBJECTS.items():
+        for (obj, max_count) in MAX_NB_OBJECTS.items():
             self.obj_offsets[obj] = offset
             offset += max_count
-        self.relevant_objects = set(MAX_ESSENTIAL_OBJECTS.keys())
+        self.relevant_objects = set(MAX_NB_OBJECTS.keys())
 
     def reset(self):
         """
@@ -167,7 +146,7 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
         """
         state = th.zeros((self.n_objects, self.n_features), dtype=th.int32)
 
-        obj_count = {k: 0 for k in MAX_ESSENTIAL_OBJECTS.keys()}
+        obj_count = {k: 0 for k in MAX_NB_OBJECTS.keys()}
 
         for obj in input_state:
             if obj.category not in self.relevant_objects:

@@ -30,10 +30,12 @@ from nudge.utils import load_model_train
 
 # Log in to your W&B account
 import wandb
+
 OUT_PATH = Path("out/")
 IN_PATH = Path("in/")
 
 torch.set_num_threads(5)
+
 
 @dataclass
 class Args:
@@ -95,7 +97,7 @@ class Args:
     """the mini-batch size (computed in runtime)"""
     num_iterations: int = 0
     """the number of iterations (computed in runtime)"""
-    
+
     # added
     env_name: str = "seaquest"
     """the name of the environment"""
@@ -130,14 +132,18 @@ class Args:
 
 
 def main():
-        
+
     args = tyro.cli(Args)
-    rtpt = RTPT(name_initials='HS', experiment_name='BlendeRL', max_iterations=int(args.total_timesteps / args.save_steps))
+    rtpt = RTPT(
+        name_initials="HS",
+        experiment_name="BlendeRL",
+        max_iterations=int(args.total_timesteps / args.save_steps),
+    )
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
     args.num_iterations = args.total_timesteps // args.batch_size
     model_description = "{}_blender_{}".format(args.blend_function, args.blender_mode)
-    learning_description = f"lr_{args.learning_rate}_llr_{args.logic_learning_rate}_blr_{args.blender_learning_rate}_gamma_{args.gamma}_bentcoef_{args.blend_ent_coef}_numenvs_{args.num_envs}_steps_{args.num_steps}_pretrained_{args.pretrained}_joint_{args.joint_training}"
+    learning_description = f"lr_{args.learning_rate}_llr_{args.logic_learning_rate}_blr_{args.blender_learning_rate}_gamma_{args.gamma}_bentcoef_{args.blend_ent_coef}_numenvs_{args.num_envs}_steps_{args.num_steps}_"
     run_name = f"{args.env_name}_{model_description}_{learning_description}_{args.seed}"
     if args.track:
         wandb.init(
@@ -145,25 +151,26 @@ def main():
             entity=args.wandb_entity,
             sync_tensorboard=True,
             config=vars(args),
-            name = run_name,
+            name=run_name,
             monitor_gym=True,
             save_code=True,
         )
 
     # for logging and model saving
-    experiment_dir = OUT_PATH / "runs" / run_name # / now.strftime("%y-%m-%d-%H-%M")
+    experiment_dir = OUT_PATH / "runs" / run_name  # / now.strftime("%y-%m-%d-%H-%M")
     checkpoint_dir = experiment_dir / "checkpoints"
-    writer_base_dir = OUT_PATH / "tensorboard" # Path("tensorboard")
+    writer_base_dir = OUT_PATH / "tensorboard"  # Path("tensorboard")
     writer_dir = writer_base_dir / run_name
     image_dir = experiment_dir / "images"
     os.makedirs(checkpoint_dir, exist_ok=True)
     os.makedirs(image_dir, exist_ok=True)
     os.makedirs(writer_dir, exist_ok=True)
-    
+
     writer = SummaryWriter(writer_dir)
     writer.add_text(
         "hyperparameters",
-        "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
+        "|param|value|\n|-|-|\n%s"
+        % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
     )
 
     # TRY NOT TO MODIFY: seeding
@@ -174,21 +181,42 @@ def main():
 
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
-    envs = VectorizedNudgeBaseEnv.from_name(args.env_name, n_envs=args.num_envs, mode=args.algorithm, seed=args.seed)#$, **env_kwargs)
+    envs = VectorizedNudgeBaseEnv.from_name(
+        args.env_name, n_envs=args.num_envs, mode=args.algorithm, seed=args.seed
+    )  # $, **env_kwargs)
 
-    agent = BlenderActorCritic(envs, args.rules, args.actor_mode, args.blender_mode, args.blend_function, args.reasoner, device)
+    agent = BlenderActorCritic(
+        envs,
+        args.rules,
+        args.actor_mode,
+        args.blender_mode,
+        args.blend_function,
+        args.reasoner,
+        device,
+    )
     if args.pretrained:
         # load neural agent weights
-        agent.visual_neural_actor.load_state_dict(torch.load("models/neural_ppo_agent_Seaquest-v4.pth"))
+        agent.visual_neural_actor.load_state_dict(
+            torch.load("models/neural_ppo_agent_Seaquest-v4.pth")
+        )
         print("Pretrained neural agent loaded!!!")
         agent.to(device)
-        
+
     if args.recover:
         # load saved agent with the most recent step
-        agent, most_recent_step = load_model_train(experiment_dir, n_envs=args.num_envs, device=device)
+        agent, most_recent_step = load_model_train(
+            experiment_dir, n_envs=args.num_envs, device=device
+        )
         # load training logs
         with open(checkpoint_dir / "training_log.pkl", "rb") as f:
-            episodic_returns, episodic_lengths, value_losses, policy_losses, entropies, blend_entropies = pickle.load(f)
+            (
+                episodic_returns,
+                episodic_lengths,
+                value_losses,
+                policy_losses,
+                entropies,
+                blend_entropies,
+            ) = pickle.load(f)
     else:
         episodic_returns = []
         episodic_lengths = []
@@ -196,26 +224,36 @@ def main():
         policy_losses = []
         entropies = []
         blend_entropies = []
-        
+
     # rewards actually used to train modes
-    episodic_game_returns= torch.zeros((args.num_envs)).to(device) 
-        
+    episodic_game_returns = torch.zeros((args.num_envs)).to(device)
+
     agent._print()
     if args.track:
-        wandb.watch([agent.logic_actor, agent.logic_critic, agent.visual_neural_actor, agent.blender]) #, log="all")
-        
+        wandb.watch(
+            [
+                agent.logic_actor,
+                agent.logic_critic,
+                agent.visual_neural_actor,
+                agent.blender,
+            ]
+        )  # , log="all")
+
     rtpt.start()
     optimizer = optim.Adam(
-                [
-                    {"params": agent.visual_neural_actor.parameters(), "lr": args.learning_rate},
-                    {"params": agent.logic_actor.parameters(), "lr": args.logic_learning_rate},
-                    {"params": agent.logic_critic.parameters(), "lr": args.learning_rate},
-                    {"params": agent.blender.parameters(), "lr": args.blender_learning_rate},
-                ],
-                lr=args.learning_rate,
-                eps = 1e-5
-                )
-        
+        [
+            {
+                "params": agent.visual_neural_actor.parameters(),
+                "lr": args.learning_rate,
+            },
+            {"params": agent.logic_actor.parameters(), "lr": args.logic_learning_rate},
+            {"params": agent.logic_critic.parameters(), "lr": args.learning_rate},
+            {"params": agent.blender.parameters(), "lr": args.blender_learning_rate},
+        ],
+        lr=args.learning_rate,
+        eps=1e-5,
+    )
+
     # ALGO Logic: Storage setup
     observation_space = (4, 84, 84)
     # logic_observation_space = (84, 51, 4)
@@ -223,7 +261,9 @@ def main():
     # logic_observation_space = (84, 43, 4)
     action_space = ()
     obs = torch.zeros((args.num_steps, args.num_envs) + observation_space).to(device)
-    logic_obs = torch.zeros((args.num_steps, args.num_envs) + logic_observation_space).to(device)
+    logic_obs = torch.zeros(
+        (args.num_steps, args.num_envs) + logic_observation_space
+    ).to(device)
     actions = torch.zeros((args.num_steps, args.num_envs) + action_space).to(device)
     logprobs = torch.zeros((args.num_steps, args.num_envs)).to(device)
     rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
@@ -232,13 +272,13 @@ def main():
 
     # TRY NOT TO MODIFY: start the game
     global_step = 0
-    save_step_bar = 0 # args.save_steps
+    save_step_bar = 0  # args.save_steps
     if args.recover:
         global_step = most_recent_step
         save_step_bar = most_recent_step
     start_time = time.time()
-    next_logic_obs, next_obs = envs.reset()#(seed=seed)
-    # 1 env 
+    next_logic_obs, next_obs = envs.reset()  # (seed=seed)
+    # 1 env
     next_logic_obs = next_logic_obs.to(device)
     next_obs = torch.Tensor(next_obs).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
@@ -258,67 +298,88 @@ def main():
             # print(next_logic_obs.shape)
             logic_obs[step] = next_logic_obs
             dones[step] = next_done
-            
 
             # ALGO LOGIC: action logic
             with torch.no_grad():
                 # next_obs: (1, 4, 84, 84)
                 # next_logic_obs: (1, 84, 51, 4)
-                action, logprob, _, _, value = agent.get_action_and_value(next_obs, next_logic_obs)
+                action, logprob, _, _, value = agent.get_action_and_value(
+                    next_obs, next_logic_obs
+                )
                 values[step] = value.flatten()
             actions[step] = action
             logprobs[step] = logprob
 
             # TRY NOT TO MODIFY: execute the game and log data.
-            (next_logic_obs, next_obs), reward, terminations, truncations, infos  = envs.step(action.cpu().numpy())
+            (next_logic_obs, next_obs), reward, terminations, truncations, infos = (
+                envs.step(action.cpu().numpy())
+            )
             next_logic_obs = next_logic_obs.float()
             terminations = np.array(terminations)
             truncations = np.array(truncations)
             next_done = np.logical_or(terminations, truncations)
             rewards[step] = torch.tensor(reward).to(device).view(-1)
-            next_obs, next_logic_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(next_logic_obs).to(device), torch.Tensor(next_done).to(device)
+            next_obs, next_logic_obs, next_done = (
+                torch.Tensor(next_obs).to(device),
+                torch.Tensor(next_logic_obs).to(device),
+                torch.Tensor(next_done).to(device),
+            )
 
             episodic_game_returns += torch.tensor(reward).to(device).view(-1)
-        
-            for k, info_ in enumerate(infos):
-                if "final_info" in info_: # or next_done.any():
-                    info = info_['final_info']
-                    if "episode" in info:
-                        print(f"env={k}, global_step={global_step}, episodic_game_return={np.round(episodic_game_returns[k].detach().cpu().numpy(), 2)}, episodic_return={info['episode']['r']}, episodic_length={info['episode']['l']}")
-                        writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                        writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
-                        episodic_returns.append(info["episode"]["r"])
-                        episodic_lengths.append(info["episode"]["l"])
-                        
-                        # save the game reward and reset
-                        writer.add_scalar("charts/episodic_game_return", episodic_game_returns[k], global_step)
-                        episodic_game_returns[k] = 0
-                        print("Environment {} has been reset".format(k))
-              
-            # Save the model      
+
+            for k, info in enumerate(infos):
+                if "episode" in info:
+                    print(
+                        f"env={k}, global_step={global_step}, episodic_game_return={np.round(episodic_game_returns[k].detach().cpu().numpy(), 2)}, episodic_return={info['episode']['r']}, episodic_length={info['episode']['l']}"
+                    )
+                    writer.add_scalar(
+                        "charts/episodic_return", info["episode"]["r"], global_step
+                    )
+                    writer.add_scalar(
+                        "charts/episodic_length", info["episode"]["l"], global_step
+                    )
+                    episodic_returns.append(info["episode"]["r"])
+                    episodic_lengths.append(info["episode"]["l"])
+
+                    # save the game reward and reset
+                    writer.add_scalar(
+                        "charts/episodic_game_return",
+                        episodic_game_returns[k],
+                        global_step,
+                    )
+                    episodic_game_returns[k] = 0
+                    print("Environment {} has been reset".format(k))
+
+            # Save the model
             if global_step > save_step_bar:
                 rtpt.step()
                 checkpoint_path = checkpoint_dir / f"step_{save_step_bar}.pth"
                 agent.save(checkpoint_path, checkpoint_dir, [], [], [])
                 print("\nSaved model at:", checkpoint_path)
-                
-                
+
                 # save hyper params
-                save_hyperparams(args=args, #signature(main),
-                    #local_scope=locals(),
+                save_hyperparams(
+                    args=args,  # signature(main),
+                    # local_scope=locals(),
                     save_path=experiment_dir / "config.yaml",
-                    print_summary=True)
-                
+                    print_summary=True,
+                )
+
                 # save training data
-                training_log = (episodic_returns, episodic_lengths, value_losses, policy_losses, entropies, blend_entropies)
+                training_log = (
+                    episodic_returns,
+                    episodic_lengths,
+                    value_losses,
+                    policy_losses,
+                    entropies,
+                    blend_entropies,
+                )
                 with open(checkpoint_dir / "training_log.pkl", "wb") as f:
                     pickle.dump(training_log, f)
-                    
-                
+
                 # increase the updated bar
                 save_step_bar += args.save_steps
-                
-                
+
         # bootstrap value if not done
         with torch.no_grad():
             next_value = agent.get_value(next_obs, next_logic_obs).reshape(1, -1)
@@ -331,8 +392,12 @@ def main():
                 else:
                     nextnonterminal = 1.0 - dones[t + 1]
                     nextvalues = values[t + 1]
-                delta = rewards[t] + args.gamma * nextvalues * nextnonterminal - values[t]
-                advantages[t] = lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
+                delta = (
+                    rewards[t] + args.gamma * nextvalues * nextnonterminal - values[t]
+                )
+                advantages[t] = lastgaelam = (
+                    delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
+                )
             returns = advantages + values
 
         # flatten the batch
@@ -353,7 +418,11 @@ def main():
                 end = start + args.minibatch_size
                 mb_inds = b_inds[start:end]
                 # print(b_obs[mb_inds])
-                _, newlogprob, entropy, blend_entropy, newvalue = agent.get_action_and_value(b_obs[mb_inds], b_logic_obs[mb_inds], b_actions.long()[mb_inds])
+                _, newlogprob, entropy, blend_entropy, newvalue = (
+                    agent.get_action_and_value(
+                        b_obs[mb_inds], b_logic_obs[mb_inds], b_actions.long()[mb_inds]
+                    )
+                )
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()
 
@@ -361,15 +430,21 @@ def main():
                     # calculate approx_kl http://joschu.net/blog/kl-approx.html
                     old_approx_kl = (-logratio).mean()
                     approx_kl = ((ratio - 1) - logratio).mean()
-                    clipfracs += [((ratio - 1.0).abs() > args.clip_coef).float().mean().item()]
+                    clipfracs += [
+                        ((ratio - 1.0).abs() > args.clip_coef).float().mean().item()
+                    ]
 
                 mb_advantages = b_advantages[mb_inds]
                 if args.norm_adv:
-                    mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
+                    mb_advantages = (mb_advantages - mb_advantages.mean()) / (
+                        mb_advantages.std() + 1e-8
+                    )
 
                 # Policy loss
                 pg_loss1 = -mb_advantages * ratio
-                pg_loss2 = -mb_advantages * torch.clamp(ratio, 1 - args.clip_coef, 1 + args.clip_coef)
+                pg_loss2 = -mb_advantages * torch.clamp(
+                    ratio, 1 - args.clip_coef, 1 + args.clip_coef
+                )
                 pg_loss = torch.max(pg_loss1, pg_loss2).mean()
 
                 # Value loss
@@ -389,11 +464,15 @@ def main():
 
                 entropy_loss = entropy.mean()
                 blend_entropy_loss = blend_entropy.mean()
-                joint_entropy_loss = - args.ent_coef * entropy_loss - args.blend_ent_coef * blend_entropy_loss
+                # __import__('ipdb').set_trace()
+                joint_entropy_loss = (
+                    -args.ent_coef * entropy_loss
+                    - args.blend_ent_coef * blend_entropy_loss
+                )
                 loss = pg_loss + joint_entropy_loss + v_loss * args.vf_coef
 
                 optimizer.zero_grad()
-                loss.backward()
+                loss.backward(retain_graph=True)
                 nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
                 optimizer.step()
 
@@ -405,11 +484,15 @@ def main():
         explained_var = np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
-        writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
+        writer.add_scalar(
+            "charts/learning_rate", optimizer.param_groups[0]["lr"], global_step
+        )
         writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
         writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
         writer.add_scalar("losses/entropy", entropy_loss.item(), global_step)
-        writer.add_scalar("losses/blend_entropy", blend_entropy_loss.item(), global_step)
+        writer.add_scalar(
+            "losses/blend_entropy", blend_entropy_loss.item(), global_step
+        )
         writer.add_scalar("losses/old_approx_kl", old_approx_kl.item(), global_step)
         writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
         writer.add_scalar("losses/clipfrac", np.mean(clipfracs), global_step)
@@ -417,21 +500,21 @@ def main():
         # the first SPS after the recovery is not accurate
         if int(global_step / (time.time() - start_time)) < 10000:
             print("SPS:", int(global_step / (time.time() - start_time)))
-            writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
-            
+            writer.add_scalar(
+                "charts/SPS", int(global_step / (time.time() - start_time)), global_step
+            )
+
         # save training data
         value_losses.append(v_loss.item())
         policy_losses.append(pg_loss.item())
         entropies.append(entropy_loss.item())
         blend_entropies.append(blend_entropy_loss.item())
-        
+
         # print current agent information
         agent._print()
-        
 
     envs.close()
     writer.close()
-
 
 
 if __name__ == "__main__":

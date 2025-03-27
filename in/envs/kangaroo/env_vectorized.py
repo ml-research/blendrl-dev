@@ -1,7 +1,9 @@
 import time
 from typing import Sequence
 import torch
+from HackAtari.hackatari.games import kangaroo
 from blendrl.env_vectorized import VectorizedNudgeBaseEnv
+from blendrl.env_utils import make_env
 from hackatari.core import HackAtari
 import torch as th
 from ocatari.ram.kangaroo import MAX_ESSENTIAL_OBJECTS
@@ -9,28 +11,7 @@ import gymnasium as gym
 
 import time
 
-from stable_baselines3.common.atari_wrappers import (  # isort:skip
-    ClipRewardEnv,
-    EpisodicLifeEnv,
-    FireResetEnv,
-    MaxAndSkipEnv,
-    NoopResetEnv,
-)
-
-
-def make_env(env):
-    env = gym.wrappers.RecordEpisodeStatistics(env)
-    env = gym.wrappers.AutoResetWrapper(env)
-    env = NoopResetEnv(env, noop_max=30)
-    env = MaxAndSkipEnv(env, skip=4)
-    env = EpisodicLifeEnv(env)
-    if "FIRE" in env.unwrapped.get_action_meanings():
-        env = FireResetEnv(env)
-    env = ClipRewardEnv(env)
-    env = gym.wrappers.ResizeObservation(env, (84, 84))
-    env = gym.wrappers.GrayScaleObservation(env)
-    env = gym.wrappers.FrameStack(env, 4)
-    return env
+from blendrl.env_utils import kangaroo_modifs
 
 
 class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
@@ -83,7 +64,7 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
                 env_name="ALE/Kangaroo-v5",
                 mode="ram",
                 obs_mode="ori",
-                modifs=[("disable_coconut"), ("random_init"), ("change_level0")],
+                modifs=kangaroo_modifs,
                 rewardfunc_path="in/envs/kangaroo/blenderl_reward.py",
                 render_mode=render_mode,
                 render_oc_overlay=render_oc_overlay,
@@ -205,26 +186,25 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
 
     def extract_logic_state(self, raw_state):
         """
-        Extracts the logic state from the input state.
-        Args:
-            raw_state (list): List of objects in the environment.
-        Returns:
-            torch.Tensor: Logic state.
+            Extracts the logic state from the input state.
+                Args:
+                    raw_state (list): List of objects in the environment.
+                Returns:
+                    torch.Tensor: Logic state.
 
-        Comment:
-            in ocatari/ram/kangaroo.py :
-                MAX_ESSENTIAL_OBJECTS = {
-                    'Player': 1,
-                    'Child': 1,
-                    'Fruit': 3,
-                    'Bell': 1,
-                    'Platform': 20,
-                    'Ladder': 6,
-                    'Monkey': 4,
-                    'FallingCoconut': 1,
-                    'ThrownCoconut': 3,
-                    'Life': 8,
-                    'Time': 1,}
+                Comment:
+                    in ocatari/ram/kangaroo.py :
+                    MAX_ESSENTIAL_OBJECTS = {
+                        'Player': 1,
+                        'Child': 1,
+                        'Monkey': 4,
+                        'FallingCoconut': 1,
+                        'ThrownCoconut': 3,
+                        'Fruit': 3,
+                        'Bell': 1,
+                        'Ladder': 6,
+                        'Platform': 20,
+        }
         """
         state = th.zeros((self.n_objects, self.n_features), dtype=th.int32)
 
