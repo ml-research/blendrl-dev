@@ -112,6 +112,7 @@ class BlenderActor(nn.Module):
                 # pred1, pred2, ..., predn, dummy_pred
                 dummy_index = len(self.logic_actor.get_prednames())
                 env_action_id_to_action_pred_indices[i].append(dummy_index)
+        print(env_action_id_to_action_pred_indices)
         return env_action_id_to_action_pred_indices
 
     def get_explanation(self, neural_state, logic_state, action):

@@ -1,0 +1,5 @@
+left(X):-player_right_of_ball(P,B),ball_comingto_player(B).
+right(X):-player_left_of_ball(P,B),ball_comingto_player(B).
+noop_faraway(X):-ball_goto_enemy(B).
+noop(X):-ball_closeto_player(P,B),ball_comingto_player(B).
+fire(X):-no_ball(B).
