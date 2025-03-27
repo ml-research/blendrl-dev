@@ -257,7 +257,7 @@ def main():
     # ALGO Logic: Storage setup
     observation_space = (4, 84, 84)
     # logic_observation_space = (84, 51, 4)
-    logic_observation_space = (envs.n_objects, 2)
+    logic_observation_space = (envs.n_objects, 4)
     # logic_observation_space = (84, 43, 4)
     action_space = ()
     obs = torch.zeros((args.num_steps, args.num_envs) + observation_space).to(device)
