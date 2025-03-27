@@ -6,11 +6,6 @@ from nsfr.utils.common import bool_to_probs
     
 """
 
-# def type(z: th.Tensor, a: th.Tensor) -> th.Tensor:
-#     z_type = z[:, 0:2]  # [1, 0, 0, 0] * [1.0, 0, 0, 0] .sum = 0.0  type(obj1, key):0.0
-#     prob = (a * z_type).sum(dim=1)
-#     return prob
-
 
 def closeby(car: th.Tensor, player: th.Tensor) -> th.Tensor:
     """Determines if a car is close to the player.

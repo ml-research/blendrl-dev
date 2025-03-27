@@ -8,7 +8,7 @@ class MLP(torch.nn.Module):
         self.as_dict = as_dict
         self.device = device
         encoding_base_features = 0
-        encoding_entity_features = 4
+        encoding_entity_features = 2
         encoding_max_entities = 12
         self.num_in_features = (encoding_base_features + encoding_entity_features) * encoding_max_entities  
 
