@@ -163,7 +163,7 @@ The following commands were used to train each respective agent. The needed flag
 
 7. To train **donkeykong** use:
 ```bash
-   python train_blenderl.py --env-name seaquest --joint-training --num-steps 128 --num-envs 100 --gamma 0.99 --actor_mode logic
+   python train_blenderl.py --env-name donkeykong --joint-training --num-steps 128 --num-envs 100 --gamma 0.99 --actor_mode logic
 ```
 
 
