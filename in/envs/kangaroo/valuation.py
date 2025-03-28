@@ -44,7 +44,6 @@ def _in_field(obj: th.Tensor) -> th.Tensor:
     return inside_field
 
 
-
 # ---------------------------------------------------------------------------------
 # platform logic
 def _on_platform(obj1: th.Tensor, obj2: th.Tensor) -> th.Tensor:
@@ -103,8 +102,6 @@ def same_level_ladder(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
 def close_by_fruit(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
     return _close_by(player, obj) * same_level(player, obj)
 
-
-
 # ---------------------------------------------------------------------------------
 # bell logic
 def close_by_bell(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
@@ -116,15 +113,13 @@ def close_by_bell(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
 def close_by_monkey(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
     return _close_by(player, obj) * same_level(player, obj)
 
-
 # ---------------------------------------------------------------------------------
 # coconut logic
 def close_by_coconut_combi(player: th.Tensor, *objects: th.Tensor) -> th.Tensor:
     results = []
     for obj in objects:
         results.append(_close_by(player, obj))
-    # Stack the results to combine the probabilities across different objects.
-    stacked = th.stack(results)  # Shape: [number_of_objects, ...]
+    stacked = th.stack(results)
     # Compute the union probability assuming independence:
     return 1 - th.prod(1 - stacked, dim=0)
 
@@ -132,8 +127,6 @@ def close_by_coconut_combi(player: th.Tensor, *objects: th.Tensor) -> th.Tensor:
 def close_by_coconut(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
     """
     Compute probability that a player is close to a coconut using sigmoid smoothing.
-    :param temperature: Controls probability smoothness.
-    :return: Probability Tensor (0.0 to 1.0).
     """
     return _close_by(player, obj)
 
@@ -143,8 +136,6 @@ def close_by_coconut(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
 def _close_by(player: th.Tensor, obj: th.Tensor, temperature: float = 6.0) -> th.Tensor:
     """
     Compute probability that a player is close to an object using sigmoid smoothing.
-    :param temperature: Controls probability smoothness.
-    :return: Probability Tensor (0.0 to 1.0).
     """
     th = 32
     player_x = player[:, 1]
@@ -157,24 +148,6 @@ def _close_by(player: th.Tensor, obj: th.Tensor, temperature: float = 6.0) -> th
     return sigmoid_smoothing(dist < th, temperature) * _in_field(obj)
 
 
-
-#def _close_by(player: th.Tensor, obj: th.Tensor, temperature: float = 5.0) -> th.Tensor:
-    """
-    Compute probability that a player is close to an object using sigmoid smoothing.
-    :param temperature: Controls probability smoothness.
-    :return: Probability Tensor (0.0 to 1.0).
-    """
-    # PLAYER_WIDTH, PLAYER_HEIGHT = 8, 24
-    # player_x, player_y = player[:, 1], player[:, 2]
-    # obj_x, obj_y = obj[:, 1], obj[:, 2]
-    # min_dist_x = th.tensor((PLAYER_WIDTH / 2) + (obj_w / 2), dtype=th.float32)
-    # min_dist_y = th.tensor((PLAYER_HEIGHT / 2) + (obj_h / 2), dtype=th.float32)
-    # min_dist = (min_dist_x ** 2 + min_dist_y ** 2).sqrt()
-    # dist = ((player_x - obj_x).pow(2) + (player_y - obj_y).pow(2)).sqrt()
-    # close_prob = th.sigmoid(temperature * (min_dist * 1.2 - dist))
-    # return close_prob
-
-
 def same_level(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
     obj1_y = player[..., 2]
     obj2_y = obj[..., 2]
@@ -184,9 +157,9 @@ def same_level(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
     is_1st_level = (124 <= obj1_y) & (obj1_y <= 172) & (124 <= obj2_y) & (obj2_y <= 172)
 
     # Determine if they are on the same level
-    is_same_level = is_3rd_level | is_2nd_level | is_1st_level  # Bitwise OR for efficiency
+    is_same_level = is_3rd_level | is_2nd_level | is_1st_level
 
-    return sigmoid_smoothing(is_same_level, temperature=6.0)  # Smooth probability output
+    return sigmoid_smoothing(is_same_level, temperature=6.0)
 
 
 def is_lower(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
@@ -203,11 +176,9 @@ def is_lower_combi(player: th.Tensor, *objects: th.Tensor) -> th.Tensor:
     Check if one or more objects are horizontally lower than the player using union probability.
     """
     results = []
-    # Compute individual probabilities using the is_lower function.
     for obj in objects:
         results.append(is_lower(player, obj))
-    # Stack the individual probability tensors.
-    stacked = th.stack(results)  # Shape: [number_of_objects, ...]
+    stacked = th.stack(results)
     # Compute the union probability assuming independence:
     # P(at least one) = 1 - (1 - p1) * (1 - p2) * ... * (1 - p_n)
     combined_prob = 1 - th.prod(1 - stacked, dim=0)
@@ -232,7 +203,7 @@ def too_high_to_jump_combi(player: th.Tensor, *objects: th.Tensor) -> th.Tensor:
     results = []
     for obj in objects:
         results.append(too_high_to_jump(player, obj))
-    stacked = th.stack(results)  # Shape: [number_of_objects, ...]
+    stacked = th.stack(results)
     # Combine the probabilities using the union probability formula:
     # P(at least one) = 1 - ∏ (1 - p_i)
     combined_prob = 1 - th.prod(1 - stacked, dim=0)
@@ -322,6 +293,7 @@ def above_combi(player: th.Tensor, *objects: th.Tensor, vertical_tolerance: floa
     # Probability that at least one object is above = 1 - (1 - p1)*(1 - p2)*...*(1 - p_n)
     return 1 - th.prod(1 - stacked, dim=0)
 
+
 def test_predicate_global(global_state: th.Tensor) -> th.Tensor:
     result = global_state[..., 0, 2] < 100
     return bool_to_probs(result)
@@ -343,9 +315,7 @@ def false_predicate(agent: th.Tensor) -> th.Tensor:
 def sigmoid_smoothing(bool_tensor: th.Tensor, temperature: float = 5.0) -> th.Tensor:
     """
     Apply sigmoid smoothing to a boolean tensor, converting True/False into soft probabilities.
-
     :param bool_tensor: Boolean tensor indicating condition (True = overlap, False = no overlap).
     :param temperature: Controls softness of probability conversion (higher = more binary-like).
-    :return: Soft probability tensor (0.0 to 1.0).
     """
     return th.sigmoid(temperature * (bool_tensor.float() - 0.5))  # Adaptive smoothing

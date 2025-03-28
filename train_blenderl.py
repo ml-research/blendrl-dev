@@ -59,7 +59,7 @@ class Args:
     """whether to capture videos of the agent performances (check out `videos` folder)"""
 
     # Algorithm specific arguments
-    env_id: str = "ALE/SpaceInvaders-v5"
+    env_id: str = "Seaquest-v4"
     """the id of the environment"""
     total_timesteps: int = 60000000
     """total timesteps of the experiments"""
@@ -99,9 +99,9 @@ class Args:
     """the mini-batch size (computed in runtime)"""
     num_iterations: int = 0
     """the number of iterations (computed in runtime)"""
-
+    
     # added
-    env_name: str = "spaceinvaders"
+    env_name: str = "seaquest"
     """the name of the environment"""
     algorithm: str = "blender"
     """the algorithm used in the agent"""
@@ -183,9 +183,7 @@ def main():
 
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
-    envs = VectorizedNudgeBaseEnv.from_name(
-        args.env_name, n_envs=args.num_envs, mode=args.algorithm, seed=args.seed
-    )  # $, **env_kwargs)
+    envs = VectorizedNudgeBaseEnv.from_name(args.env_name, n_envs=args.num_envs, mode=args.algorithm, seed=args.seed)#$, **env_kwargs)
 
     agent = BlenderActorCritic(
         envs,

@@ -11,9 +11,9 @@ up_to_fruit:1:image
 up_to_bell:1:image
 left_to_avoid_monkey:1:image
 right_to_avoid_monkey:1:image
-fire_left_monkey:1:image
-fire_right_monkey:1:image
-fire_coconut_left:1:image
-fire_coconut_right:1:image
+fire_monkey_l:1:image
+fire_monkey_r:1:image
+fire_coconut_l:1:image
+fire_coconut_r:1:image
 right_to_child:1:image
 left_to_child:1:image
