@@ -197,3 +197,4 @@ $RECYCLE.BIN/
 # Our project specific stuff
 __pycache__
 /models
+/csv

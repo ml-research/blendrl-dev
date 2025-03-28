@@ -6,7 +6,7 @@ import glob
 import os
 
 # === Main Execution ===
-directory_path = "out\tensorboard\seaquest_softmax_blender_logic_lr_0.00025_llr_0.00025_blr_0.00025_gamma_0.99_bentcoef_0.01_numenvs_50_steps_128__0"
+directory_path = "out_seaquest/tensorboard/seaquest_softmax_blender_logic_lr_0.00025_llr_0.00025_blr_0.00025_gamma_0.99_bentcoef_0.01_numenvs_50_steps_128__0"
 
 def extract_tag_values_from_events(file_path, target_tag):
     data = []
@@ -78,6 +78,7 @@ def process_and_plot_metric(directory_path, target_tag, filename, compute_stats=
 
 
 process_and_plot_metric(directory_path, "charts/episodic_return", "episodic_return.csv", compute_stats=True)
+process_and_plot_metric(directory_path, "charts/episodic_game_return", "episodic_game_return.csv", compute_stats=True)
 process_and_plot_metric(directory_path, "charts/episodic_length", "episodic_length.csv", compute_stats=True)
 process_and_plot_metric(directory_path, "losses/value_loss", "value_loss.csv")
 process_and_plot_metric(directory_path, "losses/policy_loss", "policy_loss.csv")
