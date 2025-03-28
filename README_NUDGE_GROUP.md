@@ -171,10 +171,15 @@ The following commands were used to train each respective agent. The needed flag
 
 You have to use `analysis_with randomb_movingavg.py` file in the root dierection.
 
-Two important changes to do:
+Two important changes to do in the script:
 
 1. Line 9 change the path to the trained agent. You can use the path from the instructions how to run agents. 
 2. Line 11 change the name of the environment (e.g. `env_name="ALE/Pong-v5"`) you want to run the radom baseline for. 
+
+Install tensorflow:
+```bash
+   pip install tensorflow
+```
 
 Run the python script. 
 ```bash
