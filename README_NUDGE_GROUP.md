@@ -24,7 +24,7 @@ You should see something like:
 ```bash
    Python 3.12.5
 ```
-Make sure you use evrsion **not older than 3.12**. Othervise it leads to a dependency conflict for the torch, as python 3.13 uses torch==2.6 instead of torch==2.4 used in the project.
+Make sure you use evrsion **not newer than 3.12**. Othervise it leads to a dependency conflict for the torch, as python 3.13 uses torch==2.6 instead of torch==2.4 used in the project.
 
 
 ## Set Up the Repository
