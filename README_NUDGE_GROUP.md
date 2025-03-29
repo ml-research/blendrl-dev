@@ -229,24 +229,4 @@ The following commands were used to train each respective agent. The needed flag
    ```bash
    python train_blenderl.py --env-name donkeykong --joint-training --num-steps 128 --num-envs 100 --gamma 0.99 --actor_mode logic
    ```
-
-
-## How to reproduce our analysis results
-
-Use `analysis_with randomb_movingavg.py` script in the root dierection.
-
-Two important changes to do in the script:
-
-1. Line 9 change the path to the tensorboard of the relevant agent.
-   (e.g. `"out_freeway/tensorboard/freeway_softmax_blender_logic_lr_0.00025_llr_0.00025_blr_0.00025_gamma_0.99_bentcoef_0.01_numenvs_50_steps_128__0"` for freeway)
-2. Line 11 change the name of the environment (e.g. `env_name="ALE/Pong-v5"`) you want to run the radom baseline for. 
-
-Install tensorflow:
-   ```bash
-   pip install tensorflow
-   ```
-
-Run the python script. 
-   ```bash
-   python 'analysis_with randomb_movingavg.py'
    ```
