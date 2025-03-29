@@ -122,7 +122,7 @@ Use the following commands to run the agents we trained on the GPU
 
 7. **Donkeykong:**
    ```bash
-   python play_gui.py --env-name donkeykong --agent-path out_dk/runs/donkeykong_softmax_blender_logic_lr_0.00025_llr_0.00025_blr_0.00025_gamma_0.99_bentcoef_0.01_numenvs_100_steps_128__0
+   python play_gui.py --env-name donkeykong --agent-path out_donkeykong/runs/donkeykong_softmax_blender_logic_lr_0.00025_llr_0.00025_blr_0.00025_gamma_0.99_bentcoef_0.01_numenvs_100_steps_128__0
    ```
 *Attention. The weights are not updating correctly because of the unidentified technical  problems. During the creation of the environment and testing the problem was not present.*
 
