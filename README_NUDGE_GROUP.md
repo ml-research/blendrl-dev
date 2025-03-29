@@ -167,12 +167,12 @@ To briefly test that training runs on all Environments use the following command
 
 6. **Seaquest:**
    ```bash
-   python train_blenderl.py --env-name seaquest --joint-training --num-envs 5--actor_mode logic
+   python train_blenderl.py --env-name seaquest --joint-training --num-envs 5 --actor_mode logic
    ```
 
 7. **Donkeykong:**
    ```bash
-   python train_blenderl.py --env-name donkeykong --joint-training --num-envs 5--actor_mode logic
+   python train_blenderl.py --env-name donkeykong --joint-training --num-envs 5 --actor_mode logic
    ```
 
 The following commands were used to train each respective agent. The needed flags and number of environments are already set.
