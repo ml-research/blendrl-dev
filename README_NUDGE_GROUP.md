@@ -34,6 +34,22 @@ Inna Kuzmina, Niklas Kuchenbrandt, Dominic Eib, Tim Klein
    . env/bin/activate
    ```
 
+If you see an error message like this:
+
+> *The virtual environment was not created successfully because ensurepip is not available.  
+> On Debian/Ubuntu systems, you need to install the python3-venv package...*
+
+It means the `python3.12-venv` package is missing.
+
+To fix this, run the following commands:
+
+```
+   sudo apt update
+   sudo apt install python<your python version>-venv
+   ```
+
+Repeat the original two commands.
+
 ### Set Up the Repository
 
 1. Clone the repository: 
