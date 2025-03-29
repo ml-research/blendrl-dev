@@ -141,7 +141,7 @@ To briefly test that training runs on all Environments use the following command
 *If you want to complete a quick training run instead of aborting it, add `--total-timesteps 5000 --save-steps 1000` to the following commands (feel free to adjust the numbers, make sure total-timesteps is greater than save-steps)*
 1. **Freeway:**
    ```
-   python train_blenderl.py --env-name freeway --num-envs 5 --joint_training --actor_mode logic
+   python train_blenderl.py --env-name freeway --joint-training --num-envs 5 --actor_mode logic
    ```
 
 2. **Space Invaders:**
@@ -152,27 +152,27 @@ To briefly test that training runs on all Environments use the following command
 
 3. **Breakout:**
    ```bash
-   python train_blenderl.py --env-name breakout --num-envs 5 --actor_mode logic
+   python train_blenderl.py --env-name breakout --joint-training --num-envs 5 --actor_mode logic
    ```
 
 4. **Kangaroo:**
    ```bash
-   python train_blenderl.py --env-name kangaroo --num-envs 5 --actor_mode logic
+   python train_blenderl.py --env-name kangaroo --joint-training --num-envs 5 --actor_mode logic
    ```
 
 5. **Pong:**
    ```bash
-   python train_blenderl.py --env-name pong --num-envs 5 --actor_mode logic
+   python train_blenderl.py --env-name pong --joint-training --num-envs 5 --actor_mode logic
    ```
 
 6. **Seaquest:**
    ```bash
-   python train_blenderl.py --env-name seaquest --num-envs 5--actor_mode logic
+   python train_blenderl.py --env-name seaquest --joint-training --num-envs 5--actor_mode logic
    ```
 
 7. **Donkeykong:**
    ```bash
-   python train_blenderl.py --env-name donkeykong --num-envs 5--actor_mode logic
+   python train_blenderl.py --env-name donkeykong --joint-training --num-envs 5--actor_mode logic
    ```
 
 The following commands were used to train each respective agent. The needed flags and number of environments are already set.
