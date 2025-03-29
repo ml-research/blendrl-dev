@@ -1,6 +1,11 @@
-noop:1:image
-up_ladder:1:image
-right_ladder:1:image
-left_ladder:1:image
 neural_agent:1:image
 logic_agent:1:image
+right_ladder:1:image
+left_ladder:1:image
+up_ladder:1:image
+up_barrel:1:image
+up_hammer:1:image
+fire_barrel:1:image
+right_to_girl:1:image
+left_to_girl:1:image
+noop:1:image

@@ -7,6 +7,7 @@ import torch as th
 from ocatari.ram.donkeykong import MAX_NB_OBJECTS
 import gymnasium as gym
 from blendrl.env_utils import make_env
+from ocatari.core import OCAtari
 
 
 class NudgeEnv(NudgeBaseEnv):
@@ -21,13 +22,16 @@ class NudgeEnv(NudgeBaseEnv):
         seed (int): Seed for the environment.
     """
     name = "donkeykong"
+    # MAX_NB_OBJECTS = {
+    #     'Player': 1, "DonkeyKong": 1, "Girlfriend": 1, "Hammer": 1, "Barrel": 4, "Ladder": 10
+    # }
     pred2action = {
         'noop': 0,
         'fire': 1,
         'up': 2,
         'right': 3,
         'left': 4,
-        'down': 5,
+        'down': 5
     }
     pred_names: Sequence
 
@@ -43,17 +47,18 @@ class NudgeEnv(NudgeBaseEnv):
             seed (int): Seed for the environment.
         """
         super().__init__(mode)
-        self.env = HackAtari(env_name="ALE/DonkeyKong-v5", mode="ram", obs_mode="ori",\
-            modifs=[("no_barrel"), ("change_level0")],\
-            rewardfunc_path="in/envs/donkeykong/blenderl_reward.py",\
-            render_mode=render_mode, render_oc_overlay=render_oc_overlay)
-        
-        
+        self.env = OCAtari(
+            env_name="ALE/DonkeyKong-v5",
+            mode="ram",
+            obs_mode="ori",
+            render_mode=render_mode,
+            render_oc_overlay=render_oc_overlay)
+
         # apply wrapper to _env
         self.env._env = make_env(self.env._env)
-        self.n_actions = 6
+        self.n_actions = len(self.pred2action)
         self.n_raw_actions = 18
-        self.n_objects = 49
+        self.n_objects = 18
         self.n_features = 4  # visible, x-pos, y-pos, right-facing
         self.seed = seed
 
@@ -75,7 +80,7 @@ class NudgeEnv(NudgeBaseEnv):
         """
         raw_state, _ = self.env.reset(seed=self.seed)
         state = self.env.objects
-        logic_state, neural_state =  self.extract_logic_state(state), self.extract_neural_state(raw_state)
+        logic_state, neural_state = self.extract_logic_state(state), self.extract_neural_state(raw_state)
         logic_state = logic_state.unsqueeze(0)
         return logic_state, neural_state
 
@@ -136,7 +141,7 @@ class NudgeEnv(NudgeBaseEnv):
         Returns:
             torch.Tensor: Neural state.
         """
-        return torch.Tensor(raw_input_state).unsqueeze(0)#.float()
+        return torch.Tensor(raw_input_state).unsqueeze(0)  # .float()
 
     def close(self):
         """

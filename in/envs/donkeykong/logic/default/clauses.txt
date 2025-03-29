@@ -1,3 +1,8 @@
+right_ladder(X):-on_right(P,L),same_level_ladder(P,L).
 up_ladder(X):-on_ladder(P,L),same_level_ladder(P,L).
-right_ladder(X):-left_of_ladder(P,L),same_level_ladder(P,L).
-left_ladder(X):-right_of_ladder(P,L),same_level_ladder(P,L).
+left_ladder(X):-on_left(P,L),same_level_ladder(P,L).
+up_barrel(X):-close_by_barrel(P,B),has_no_hammer(P,H).
+up_hammer(X):-close_by_hammer(P,H),above(P,H),has_no_hammer(P,H).
+fire_barrel(X):-close_by_barrel(P,B),has_hammer(P,H).
+right_to_girl(X):-on_right(P,G),same_level(P,G).
+left_to_girl(X):-on_left(P,G),same_level(P,G).

@@ -1,14 +1,7 @@
-
 oplayer:obj1
-
 odonkeykong:obj2
-
 ogirlfriend:obj3
-
 ohammer:obj4
-
-obarrel:obj5,obj6,obj7,obj8,obj9,obj10
-
-oladder:obj11,obj12,obj13,obj14,obj15,obj16,obj17,obj18,obj19,obj20
-
+obarrel:obj5,obj6,obj7,obj8
+oladder:obj9,obj10,obj11,obj12,obj13,obj14,obj15,obj16,obj17,obj18
 image:img

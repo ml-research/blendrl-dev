@@ -1,2 +1,2 @@
 neural_agent(X):-close_by_barrel(P,B).
-logic_agent(X):-nothing_around(X).
+logic_agent(X):-on_right(P,L).
