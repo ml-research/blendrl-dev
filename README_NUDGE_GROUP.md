@@ -11,114 +11,123 @@ Inna Kuzmina, Niklas Kuchenbrandt, Dominic Eib, Tim Klein
 
 
 2. Run one of the following commands:
- ```bash
+   ```bash
    python --version 
-```
-If that doesn’t work, try:
+   ```
+   If that doesn’t work, try:
 
-```bash
+   ```bash
    python3 --version
-```
+   ```
 
-You should see something like:
-```bash
-   Python 3.12.5
-```
-Make sure you use evrsion **not newer than 3.12**. Othervise it leads to a dependency conflict for the torch, as python 3.13 uses torch==2.6 instead of torch==2.4 used in the project.
+   You should see something like:
+   ```bash
+   Python 3.12.3
+   ```
+   Make sure your Python version **is not newer than 3.12**. Otherwise it leads to a dependency conflict for torch, as python 3.13 uses torch==2.6 instead of torch==2.4, which was used in the project.
 
+## Set Up 
 
-## Set Up the Repository
+### Set Up new Virtual Environment
+   ```
+   python3 -m venv env
+   . env/bin/activate
+   ```
 
-1. Clone the repository: https://github.com/ml-research/blendrl/tree/Nudge
+### Set Up the Repository
 
-2. Open the cloned repository in your code editor.
+1. Clone the repository: 
+   ```bash
+   git clone -b Nudge https://github.com/ml-research/blendrl NudgeTest
+   ```
+   *Change NudgeTest to whatever you like or omit*
 
-3. Switch to the **Nudge** Branch
-```bash
-   git checkout -b Nudge origin/Nudge
-```
+2. Open the cloned repository.
+   ```bash
+   cd NudgeTest
+   ```
+   *Same Folder Name as in 1., blendrl if omitted*
+
 
 4. Install all requirements via
-```bash
+   ```bash
    pip install -r requirements.txt
-```
+   ```
 
 2. Install other dependencies
     ```bash
     cd nsfr
     pip install -e .
-    cd ..
-    cd nudge
+    cd ../nudge
     pip install -e .
-    cd ..
-    cd neumann
+    cd ../neumann
     pip install -e .
     cd ..
     ```
 3. Install [PyG](https://pytorch-geometric.readthedocs.io/en/latest/notes/installation.html)  dependencies required by neumann.
-```bash
+   ```bash
    pip install torch-geometric
    pip install torch-sparse
    pip install torch-scatter
    ```
-If you have problems with installing **torch-sparse and torch-scatter** use the respective commands below. 
+   If you have problems with installing **torch-sparse and torch-scatter** use the respective commands below. 
 
-If you are using CPU:
-```bash
+   If you are using CPU:
+   ```bash
    pip install torch-scatter -f https://data.pyg.org/whl/torch-2.4.0+cpu.html
    pip install torch-sparse -f https://data.pyg.org/whl/torch-2.4.0+cpu.html
    ```
 
-For CUDA 12.1:
-```bash
+   For CUDA 12.1:
+   ```bash
    pip install torch-scatter -f https://data.pyg.org/whl/torch-2.4.0+cu121.html
    pip install torch-sparse -f https://data.pyg.org/whl/torch-2.4.0+cu121.html
-```
-*Change CUDA version if necessary.*
+   ```
+   *Change CUDA version if necessary. If you have issues please follow the [official installation guide](https://pytorch-geometric.readthedocs.io/en/latest/notes/installation.html).*
 
-## Run the trained agents
+## Run trained agents
 
-You have to use different commands to run trained agents for a specific game.
+Use the following commands to run the agents we trained on the GPU
 
-1. To run **freeway** use:
-```bash
-   python play_gui.py --env-name freeway --agent-path out_freeway\runs\freeway_softmax_blender_logic_lr_0.00025_llr_0.00025_blr_0.00025_gamma_0.99_bentcoef_0.01_numenvs_50_steps_128__0
-```
+1. **Freeway:**
+   ```bash
+   python play_gui.py --env-name freeway --agent-path out_freeway/runs/freeway_softmax_blender_logic_lr_0.00025_llr_0.00025_blr_0.00025_gamma_0.99_bentcoef_0.01_numenvs_50_steps_128__0
+   ```
 
-2. To run **space invaders** use:
-```bash
-   python play_gui.py --env-name spaceinvaders --agent-path  out_spaceinvaders\runs\spaceinvaders_softmax_blender_logic_lr_0.00025_llr_0.00025_blr_0.00025_gamma_0.99_bentcoef_0.01_numenvs_50_steps_128__0
-```
+2. **Space Invaders:**
+   ```bash
+   python play_gui.py --env-name spaceinvaders --agent-path  out_spaceinvaders/runs/spaceinvaders_softmax_blender_logic_lr_0.00025_llr_0.00025_blr_0.00025_gamma_0.99_bentcoef_0.01_numenvs_50_steps_128__0
+   ```
 
 
-3. To run **breakout** use:
-```bash
+3. **Breakout:**
+   ```bash
    python play_gui.py --env-name breakout --agent-path out_breakout/runs/breakout_softmax_blender_logic_lr_0.00025_llr_0.00025_blr_0.00025_gamma_0.99_bentcoef_0.01_numenvs_100_steps_128__0
-```
+   ```
 
-4. To run **kangaroo** use:
-```bash
+4. **Kangaroo**
+   ```
    python play_gui.py --env-name kangaroo --agent-path out_kangaroo/runs/kangaroo_softmax_blender_logic_lr_0.00025_llr_0.00025_blr_0.00025_gamma_0.99_bentcoef_0.01_numenvs_50_steps_128__0
-```
+   ```
 
-5. To run **pong** use:
-```bash
+5. **Pong:**
+   ```bash
    python play_gui.py --env-name pong --agent-path out_pong/runs/pong_softmax_blender_logic_lr_0.00025_llr_0.00025_blr_0.00025_gamma_0.99_bentcoef_0.01_numenvs_100_steps_128__0
-```
+   ```
 
-6. To run **seaquest** use:
-```bash
+6. **Seaquest:**
+   ```bash
    python play_gui.py --env-name seaquest --agent-path out_seaquest/runs/seaquest_softmax_blender_logic_lr_0.00025_llr_0.00025_blr_0.00025_gamma_0.99_bentcoef_0.01_numenvs_50_steps_128__0
-```
+   ```
 
-7. To run **donkeykong** use:
-```bash
+7. **Donkeykong:**
+   ```bash
    python play_gui.py --env-name donkeykong --agent-path out_dk/runs/donkeykong_softmax_blender_logic_lr_0.00025_llr_0.00025_blr_0.00025_gamma_0.99_bentcoef_0.01_numenvs_100_steps_128__0
-```
+   ```
 *Attention. The weights are not updating correctly because of the unidentified technical  problems. During the creation of the environment and testing the problem was not present.*
 
 
-## Train your own agents
+## Train agents
 You have to use different commands to start training an agent.
 
 To explicit train NUDGE agent use flag `--actor_mode logic` which activates only logic part of BlendRL.
@@ -127,61 +136,101 @@ Do not forget to change `--num-envs` parameter.
 - For local testing we suggest using **5-10** environments. 
 - For real training with GPU use **500** environments. If it is not possible due to technical constraints use **50-100** environments.
 
+To briefly test that training runs on all Environments use the following commands:
+
+*If you want to complete a quick training run instead of aborting it, add `--total-timesteps 5000 --save-steps 1000` to the following commands (feel free to adjust the numbers, make sure total-timesteps is greater than save-steps)*
+1. **Freeway:**
+   ```
+   python train_blenderl.py --env-name freeway --num-envs 5 --joint_training --actor_mode logic
+   ```
+
+2. **Space Invaders:**
+   ```bash
+   python train_blenderl.py --env-name spaceinvaders --joint-training --num-envs 5 --actor_mode logic
+   ```
+
+
+3. **Breakout:**
+   ```bash
+   python train_blenderl.py --env-name breakout --num-envs 5 --actor_mode logic
+   ```
+
+4. **Kangaroo:**
+   ```bash
+   python train_blenderl.py --env-name kangaroo --num-envs 5 --actor_mode logic
+   ```
+
+5. **Pong:**
+   ```bash
+   python train_blenderl.py --env-name pong --num-envs 5 --actor_mode logic
+   ```
+
+6. **Seaquest:**
+   ```bash
+   python train_blenderl.py --env-name seaquest --num-envs 5--actor_mode logic
+   ```
+
+7. **Donkeykong:**
+   ```bash
+   python train_blenderl.py --env-name donkeykong --num-envs 5--actor_mode logic
+   ```
+
 The following commands were used to train each respective agent. The needed flags and number of environments are already set.
 
 
-1. To train **freeway** use:
-```bash
+1. **Freeway:**
+   ```bash
    python train_blenderl.py --env-name freeway --joint-training --num-steps 128 --num-envs 50 --gamma 0.99 --actor_mode logic
-```
+   ```
 
-2. To train **space invaders** use:
-```bash
+2. **Space Invaders:**
+   ```bash
    python train_blenderl.py --env-name spaceinvaders --joint-training --num-steps 128 --num-envs 50 --gamma 0.99 --actor_mode logic
-```
+   ```
 
 
-3. To train **breakout** use:
-```bash
+3. **Breakout:**
+   ```bash
    python train_blenderl.py --env-name breakout --joint-training --num-steps 128 --num-envs 100 --gamma 0.99 --actor_mode logic
-```
+   ```
 
-4. To train **kangaroo** use:
-```bash
+4. **Kangaroo:**
+   ```bash
    python train_blenderl.py --env-name kangaroo --joint-training --num-steps 128 --num-envs 50 --gamma 0.99 --actor_mode logic
-```
+   ```
 
-5. To train **pong** use:
-```bash
+5. **Pong:**
+   ```bash
    python train_blenderl.py --env-name pong --joint-training --num-steps 128 --num-envs 100 --gamma 0.99 --actor_mode logic
-```
+   ```
 
-6. To train **seaquest** use:
-```bash
+6. **Seaquest:**
+   ```bash
    python train_blenderl.py --env-name seaquest --joint-training --num-steps 128 --num-envs 50 --gamma 0.99 --actor_mode logic
-```
+   ```
 
-7. To train **donkeykong** use:
-```bash
+7. **Donkeykong:**
+   ```bash
    python train_blenderl.py --env-name donkeykong --joint-training --num-steps 128 --num-envs 100 --gamma 0.99 --actor_mode logic
-```
+   ```
 
 
 ## How to reproduce our analysis results
 
-You have to use `analysis_with randomb_movingavg.py` file in the root dierection.
+Use `analysis_with randomb_movingavg.py` script in the root dierection.
 
 Two important changes to do in the script:
 
-1. Line 9 change the path to the trained agent. You can use the path from the instructions how to run agents. 
+1. Line 9 change the path to the tensorboard of the relevant agent.
+   (e.g. `"out_freeway/tensorboard/freeway_softmax_blender_logic_lr_0.00025_llr_0.00025_blr_0.00025_gamma_0.99_bentcoef_0.01_numenvs_50_steps_128__0"` for freeway)
 2. Line 11 change the name of the environment (e.g. `env_name="ALE/Pong-v5"`) you want to run the radom baseline for. 
 
 Install tensorflow:
-```bash
+   ```bash
    pip install tensorflow
-```
+   ```
 
 Run the python script. 
-```bash
-   python analysis_with randomb_movingavg.py
-```
+   ```bash
+   python 'analysis_with randomb_movingavg.py'
+   ```
