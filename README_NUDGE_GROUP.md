@@ -88,7 +88,29 @@ Repeat the original two commands.
    ```
    If you have problems with installing **torch-sparse and torch-scatter** use the respective commands below. 
 
-   If you are using CPU:
+
+   Check what version of PyTorch you are on (CPU or GPU):
+   ```bash
+   python -c "import torch; print(torch.__version__); print(torch.version.cuda)"
+   ```
+
+   You should get something like this if you are using GPU version.
+   ```bash
+   2.4.0+cu121
+   12.1
+   ```
+
+   If you get something like this it means you are currently using CPU:
+
+   ```bash
+   2.4.0+cpu
+   None
+   ```
+
+
+   Based on the output above use the respective commands.
+
+   For CPU:
    ```bash
    pip install torch-scatter -f https://data.pyg.org/whl/torch-2.4.0+cpu.html
    pip install torch-sparse -f https://data.pyg.org/whl/torch-2.4.0+cpu.html
@@ -100,6 +122,9 @@ Repeat the original two commands.
    pip install torch-sparse -f https://data.pyg.org/whl/torch-2.4.0+cu121.html
    ```
    *Change CUDA version if necessary. If you have issues please follow the [official installation guide](https://pytorch-geometric.readthedocs.io/en/latest/notes/installation.html).*
+
+   *Make sure you're using the correct torch and torch-scatter/torch-sparse version for CPU or CUDA. The CPU version of torch is not compatible with CUDA torch-scatter/torch-sparse versions. **Mismatched versions will cause training to fail.***
+
 
 ## Run trained agents
 
@@ -140,7 +165,7 @@ Use the following commands to run the agents we trained on the GPU
    ```bash
    python play_gui.py --env-name donkeykong --agent-path out_donkeykong/runs/donkeykong_softmax_blender_logic_lr_0.00025_llr_0.00025_blr_0.00025_gamma_0.99_bentcoef_0.01_numenvs_100_steps_128__0
    ```
-*Attention. The weights are not updating correctly because of the unidentified technical  problems. During the creation of the environment and testing the problem was not present.*
+*Attention. The weights for Donekykong are not updating correctly because of the unidentified technical problems. During the creation of the environment and testing the problem was not present. More information is provided in the Project Report.*
 
 
 ## Train agents
@@ -228,5 +253,4 @@ The following commands were used to train each respective agent. The needed flag
 7. **Donkeykong:**
    ```bash
    python train_blenderl.py --env-name donkeykong --joint-training --num-steps 128 --num-envs 100 --gamma 0.99 --actor_mode logic
-   ```
    ```
