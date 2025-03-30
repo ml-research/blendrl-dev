@@ -200,3 +200,5 @@ __pycache__
 /neumann/neumann.egg-info/
 nsfr/nsfr.egg-info/
 nudge/nudge.egg-info/
+
+/csv

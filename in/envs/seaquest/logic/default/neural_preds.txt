@@ -1,5 +1,7 @@
 visible_enemy:1:oenemy
+no_visible_enemy:1:oenemy
 visible_diver:1:odiver
+no_visible_diver:1:odiver
 visible_missile:1:omissile
 facing_left:1:oplayer
 facing_right:1:oplayer
@@ -23,5 +25,6 @@ test_predicate_object:1:oplayer
 true_predicate:1:oplayer
 false_predicate:1:oplayer
 full_divers:1:image
+has_divers:1:image
 not_full_divers:1:image
 many_enemies:1:image

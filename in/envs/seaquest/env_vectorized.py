@@ -5,7 +5,7 @@ import torch as th
 from ocatari.ram.seaquest import MAX_NB_OBJECTS
 import gymnasium as gym
 from hackatari.core import HackAtari
-
+from ocatari.core import OCAtari
 
 class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
     name = "seaquest"
@@ -31,11 +31,10 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
         # set up multiple envs
         self.n_envs = n_envs
         self.envs = [
-            HackAtari(
+            OCAtari(
                 env_name="ALE/Seaquest-v5",
                 mode="ram",
                 obs_mode="ori",
-                rewardfunc_path="in/envs/seaquest/blenderl_reward.py",
                 render_mode=render_mode,
                 render_oc_overlay=render_oc_overlay,
             )
