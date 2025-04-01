@@ -45,7 +45,7 @@ python train_blenderl.py --env-name seaquest --joint-training --num-steps 128 --
 - --num-envs: the number of environments to train agents
 - --gamma: the discount factor for future rewards -->
 
-Train the valuation functions:
+**Train the valuation functions:**
 ```
 python train_valuation.py --env-name kangaroo --num-steps 128 --num-envs 5 --track
 ```
@@ -82,8 +82,8 @@ Install PyG and torch-scatter packages for neumann reasoner. See the [installati
     ```
     pip install torch==1.12.0+cu116 torchvision==0.13.0+cu116 -f https://download.pytorch.org/whl/torch_stable.html
     pip install torch_geometric
-    pip install pyg_lib torch_scatter torch_sparse -f https://data.pyg.org/whl/torch-1.12.0+cu116.html -->
-    ```
+    pip install pyg_lib torch_scatter torch_sparse -f https://data.pyg.org/whl/torch-1.12.0+cu116.html 
+    ``` -->
 
 
 ## How to Set up New Environments
