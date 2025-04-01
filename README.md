@@ -36,14 +36,24 @@ python play_gui.py --env-name seaquest --agent-path models/seaquest_demo
 Note that a checkpoint is required to run the play script.
 
 
-You can run the training script:
+<!-- You can run the training script:
 ```
 python train_blenderl.py --env-name seaquest --joint-training --num-steps 128 --num-envs 5 --gamma 0.99
 ```
 - --joint-training: train neural and logic modules jointly
 - --num-steps: the number of steps for policy rollout
 - --num-envs: the number of environments to train agents
+- --gamma: the discount factor for future rewards -->
+
+Train the valuation functions:
+```
+python train_valuation.py --env-name kangaroo --num-steps 128 --num-envs 5 --track
+```
+
+- --num-steps: the number of steps for policy rollout
+- --num-envs: the number of environments to train agents
 - --gamma: the discount factor for future rewards
+- --track: track the training process with wandb
 
 
 ## How to Use
