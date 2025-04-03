@@ -17,3 +17,4 @@ neural_agent:1:image
 logic_agent:1:image
 left_evade:1:image
 right_evade:1:image
+evade_enemy:1:image

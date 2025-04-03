@@ -70,7 +70,7 @@ class NudgeEnv(NudgeBaseEnv):
             env_name="ALE/Riverraid",
             mode="ram",
             obs_mode="ori",
-            modifs=[],
+            modifs=[("LinearRiver"),],
             rewardfunc_path="in/envs/riverraid/blenderl_reward.py",
             render_mode=render_mode,
             render_oc_overlay=render_oc_overlay,

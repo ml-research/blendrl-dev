@@ -1,34 +1,25 @@
 import torch as th
 from nsfr.utils.common import bool_to_probs
+    
+LEFT_EDGE = 40
+RIGHT_EDGE = 192-40
 
-def on_river(player: th.Tensor, grass: th.Tensor) -> th.Tensor:
-    """Returns True if the player is within river boundaries (far from grass)."""
+def on_river(player: th.Tensor) -> th.Tensor:
+    """Returns True if the player is within river boundaries."""
     player_x = player[..., 1]
-    grass_x = grass[..., 1]
-    grass_prob = grass[:, 0]
-    return bool_to_probs(abs(player_x - grass_x) > 15) * grass_prob
+    return bool_to_probs((player_x > LEFT_EDGE + 15) & (player_x < RIGHT_EDGE - 15))
 
-def left_edge_river(player: th.Tensor, grass: th.Tensor) -> th.Tensor:
-    """Returns True if the player is too close to the left-side grass."""
+def left_edge_river(player: th.Tensor) -> th.Tensor:
+    """Returns True if the player is too close to the left-side boundary."""
     player_x = player[..., 1]
-    grass_x = grass[..., 1]
-    grass_prob = grass[:, 0]
-    return bool_to_probs(player_x < grass_x + 10) * grass_prob
+    return bool_to_probs(player_x < LEFT_EDGE + 10)
 
-def right_edge_river(player: th.Tensor, grass: th.Tensor) -> th.Tensor:
-    """Returns True if the player is too close to the right-side grass."""
+def right_edge_river(player: th.Tensor) -> th.Tensor:
+    """Returns True if the player is too close to the right-side boundary."""
     player_x = player[..., 1]
-    grass_x = grass[..., 1]
-    grass_prob = grass[:, 0]
-    return bool_to_probs(player_x > grass_x - 10) * grass_prob
+    return bool_to_probs(player_x > RIGHT_EDGE - 10)
 
-def same_level_river(player: th.Tensor, grass: th.Tensor) -> th.Tensor:
-    """Returns True if there is grass at the same height as the player (blocking path)."""
-    player_y = player[..., 2]
-    grass_y = grass[..., 2]
-    grass_prob = grass[:, 0]
-    return bool_to_probs(abs(player_y - grass_y) < 5) * grass_prob
-
+# Close by objects
 def close_by_fuel(player: th.Tensor, fuel: th.Tensor) -> th.Tensor:
     return _close_by(player, fuel, threshold=25)
 
@@ -43,6 +34,39 @@ def close_by_enemy_base(player: th.Tensor, enemy_base: th.Tensor) -> th.Tensor:
 
 def close_by_bridge(player: th.Tensor, bridge: th.Tensor) -> th.Tensor:
     return _close_by(player, bridge, threshold=40)
+
+def close_by_enemy(player: th.Tensor, enemy_ship: th.Tensor, helicopter: th.Tensor, enemy_base: th.Tensor) -> th.Tensor:
+    return th.maximum(
+        _close_by(player, enemy_ship, threshold=40),
+        th.maximum(
+            _close_by(player, helicopter, threshold=35),
+            _close_by(player, enemy_base, threshold=30),
+        )
+    )
+# Far from objects
+def far_from_fuel(player: th.Tensor, fuel: th.Tensor) -> th.Tensor:
+    return _far_from(player, fuel, threshold=25)
+
+def far_from_enemy_ship(player: th.Tensor, enemy_ship: th.Tensor) -> th.Tensor:
+    return _far_from(player, enemy_ship, threshold=40)
+
+def far_from_helicopter(player: th.Tensor, helicopter: th.Tensor) -> th.Tensor:
+    return _far_from(player, helicopter, threshold=35)
+
+def far_from_enemy_base(player: th.Tensor, enemy_base: th.Tensor) -> th.Tensor:
+    return _far_from(player, enemy_base, threshold=30)
+
+def far_from_bridge(player: th.Tensor, bridge: th.Tensor) -> th.Tensor:
+    return _far_from(player, bridge, threshold=40)
+
+def far_from_enemy(player: th.Tensor, enemy_ship: th.Tensor, helicopter: th.Tensor, enemy_base: th.Tensor) -> th.Tensor:
+    return th.maximum(
+        _far_from(player, enemy_ship, threshold=40),
+        th.maximum(
+            _far_from(player, helicopter, threshold=35),
+            _far_from(player, enemy_base, threshold=30),
+        )
+    )
 
 def nothing_around(objs: th.Tensor) -> th.Tensor:
     """Returns True if there are no enemy objects around."""
@@ -63,28 +87,34 @@ def same_level_bridge(player: th.Tensor, bridge: th.Tensor) -> th.Tensor:
     return _same_level(player, bridge)
 
 def right_of_enemy_ship(player: th.Tensor, enemy: th.Tensor) -> th.Tensor:
-    return _higher_than(player, enemy)
+    return _right_of(player, enemy)
 
 def left_of_enemy_ship(player: th.Tensor, enemy: th.Tensor) -> th.Tensor:
-    return _lower_than(player, enemy)
+    return _left_of(player, enemy)
+
+def right_of_fuel(player: th.Tensor, fuel: th.Tensor) -> th.Tensor:
+    return _right_of(player, fuel)
+
+def left_of_fuel(player: th.Tensor, fuel: th.Tensor) -> th.Tensor:
+    return _left_of(player, fuel)
 
 def right_of_helicopter(player: th.Tensor, helicopter: th.Tensor) -> th.Tensor:
-    return _higher_than(player, helicopter)
+    return _right_of(player, helicopter)
 
 def left_of_helicopter(player: th.Tensor, helicopter: th.Tensor) -> th.Tensor:
-    return _lower_than(player, helicopter)
+    return _left_of(player, helicopter)
 
 def right_of_enemy_base(player: th.Tensor, enemy: th.Tensor) -> th.Tensor:
-    return _higher_than(player, enemy)
+    return _right_of(player, enemy)
 
 def left_of_enemy_base(player: th.Tensor, enemy: th.Tensor) -> th.Tensor:
-    return _lower_than(player, enemy)
+    return _left_of(player, enemy)
 
 def right_of_bridge(player: th.Tensor, bridge: th.Tensor) -> th.Tensor:
-    return _higher_than(player, bridge)
+    return _right_of(player, bridge)
 
 def left_of_bridge(player: th.Tensor, bridge: th.Tensor) -> th.Tensor:
-    return _lower_than(player, bridge)
+    return _left_of(player, bridge)
 
 def _close_by(player: th.Tensor, obj: th.Tensor, threshold=32) -> th.Tensor:
     """Returns True if player is within a certain distance of an object."""
@@ -94,17 +124,29 @@ def _close_by(player: th.Tensor, obj: th.Tensor, threshold=32) -> th.Tensor:
     distance = ((player_x - obj_x) ** 2 + (player_y - obj_y) ** 2).sqrt()
     return bool_to_probs(distance < threshold) * obj_prob
 
-def _higher_than(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
-    """Returns True if the player is above the object."""
-    return bool_to_probs(player[..., 2] < obj[..., 2] - 4) * obj[:, 0]
+def _far_from(player: th.Tensor, obj: th.Tensor, threshold=32) -> th.Tensor:
+    """Returns True if player is within a certain distance of an object."""
+    player_x, player_y = player[..., 1], player[..., 2]
+    obj_x, obj_y = obj[..., 1], obj[..., 2]
+    obj_prob = obj[:, 0]
+    distance = ((player_x - obj_x) ** 2 + (player_y - obj_y) ** 2).sqrt()
+    return bool_to_probs(distance > threshold) * obj_prob
 
-def _lower_than(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
+def visible_bridge(obj: th.Tensor) -> th.Tensor:
+    result = obj[..., 0] == 1
+    return bool_to_probs(result)
+
+def _right_of(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
+    """Returns True if the player is above the object."""
+    return bool_to_probs(player[..., 1] > obj[..., 1] - 4) * obj[:, 0]
+
+def _left_of(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
     """Returns True if the player is below the object."""
-    return bool_to_probs(player[..., 2] > obj[..., 2] + 4) * obj[:, 0]
+    return bool_to_probs(player[..., 1] < obj[..., 1] + 4) * obj[:, 0]
 
 def _same_level(player: th.Tensor, obj: th.Tensor) -> th.Tensor:
     """Returns True if the player and the object are at the same height."""
-    return bool_to_probs(abs(player[..., 2] - obj[..., 2]) < 5) * obj[:, 0]
+    return bool_to_probs(abs(player[..., 1] - obj[..., 1]) < 5) * obj[:, 0]
 
 def test_predicate_global(global_state: th.Tensor) -> th.Tensor:
     return bool_to_probs(global_state[..., 0, 2] < 100)
