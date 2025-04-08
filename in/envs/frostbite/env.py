@@ -2,12 +2,13 @@ from typing import Sequence
 import torch
 from nudge.env import NudgeBaseEnv
 from hackatari.core import HackAtari
-import numpy as np
 import torch as th
-from ocatari.ram.seaquest import MAX_ESSENTIAL_OBJECTS
 import gymnasium as gym
 
-
+MAX_NB_OBJECTS = {"Player": 1, "Bear": 1, "House": 1, "Door": 1,
+                  "Bird": 8, "Crab": 8, "Clam": 8, "GreenFish": 8, "FloatingBlock": 24}
+MAX_NB_OBJECTS_HUD = {"Player": 1, "Bear": 1, "House": 1, "Door": 1, "Bird": 8, "Crab": 8, "Clam": 8, "GreenFish": 8, "FloatingBlock": 24,
+                      "Lives": 1, "Temperature": 1, "Score": 1}
 
 from stable_baselines3.common.atari_wrappers import (  # isort:skip
     ClipRewardEnv,
@@ -32,9 +33,9 @@ def make_env(env):
         env = FireResetEnv(env)
     env = ClipRewardEnv(env)
     env = gym.wrappers.ResizeObservation(env, (84, 84))
-    env = gym.wrappers.GrayScaleObservation(env)
-    env = gym.wrappers.FrameStack(env, 4)
-    env = gym.wrappers.AutoResetWrapper(env)
+    env = gym.wrappers.GrayscaleObservation(env)
+    env = gym.wrappers.FrameStackObservation(env, 4)
+    env = gym.wrappers.Autoreset(env)
     return env
 
 
@@ -55,10 +56,14 @@ class NudgeEnv(NudgeBaseEnv):
         super().__init__(mode)
         # self.env = OCAtari(env_name="Seaquest-v4", mode="ram", obs_mode="ori",
         #                    render_mode=render_mode, render_oc_overlay=render_oc_overlay)
-        self.env = HackAtari(env_name="ALE/Frostbite-v5", mode="ram", 
-                            #  modifs=[("disable_enemies")],
-                            rewardfunc_path="in/envs/frostbite/blenderl_reward.py",
-                            render_mode=render_mode, render_oc_overlay=render_oc_overlay)
+        self.env = HackAtari(
+                env_name="ALE/Frostbite-v5",
+                mode="ram",
+                obs_mode="ori",
+                modifs=[("ui_color_red"), ("reposition_floes_medium"), ("no_birds"), ("many_enemies")],
+                rewardfunc_path="in/envs/frostbite/blenderl_reward.py",
+                render_mode=render_mode,
+                render_oc_overlay=render_oc_overlay)
         # for learning script from cleanrl
         self.env._env = make_env(self.env._env)
         self.n_actions = 6
@@ -70,10 +75,10 @@ class NudgeEnv(NudgeBaseEnv):
         # Compute index offsets. Needed to deal with multiple same-category objects
         self.obj_offsets = {}
         offset = 0
-        for (obj, max_count) in MAX_ESSENTIAL_OBJECTS.items():
+        for (obj, max_count) in MAX_NB_OBJECTS.items():
             self.obj_offsets[obj] = offset
             offset += max_count
-        self.relevant_objects = set(MAX_ESSENTIAL_OBJECTS.keys())
+        self.relevant_objects = set(MAX_NB_OBJECTS.keys())
 
     def reset(self):
         obs, _ = self.env.reset(seed=self.seed)
@@ -121,7 +126,7 @@ class NudgeEnv(NudgeBaseEnv):
         state = th.zeros((self.n_objects, self.n_features), dtype=th.int32)
         self.bboxes = th.zeros((self.n_objects, 4), dtype=th.int32)
 
-        obj_count = {k: 0 for k in MAX_ESSENTIAL_OBJECTS.keys()}
+        obj_count = {k: 0 for k in MAX_NB_OBJECTS.keys()}
 
         for obj in input_state:
             if obj.category not in self.relevant_objects:

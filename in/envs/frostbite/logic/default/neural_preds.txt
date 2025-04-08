@@ -1,4 +1,4 @@
-no_enemy_below:2:oplayer,oenemy 
+no_enemy_below:2:oplayer,oenemy
 no_enemy_above:2:oplayer,oenemy
 fish_below:2:oplayer,ogreenfish
 fish_above:2:oplayer,ogreenfish

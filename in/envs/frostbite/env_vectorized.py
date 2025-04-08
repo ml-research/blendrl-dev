@@ -1,16 +1,14 @@
 from typing import Sequence
 import torch
 from blendrl.env_vectorized import VectorizedNudgeBaseEnv
-from ocatari.core import OCAtari
-import numpy as np
 import torch as th
-from ocatari.ram.seaquest import MAX_NB_OBJECTS as MAX_ESSENTIAL_OBJECTS
-import gymnasium
 import gymnasium as gym
-from stable_baselines3.common.env_util import make_atari_env
-from stable_baselines3.common.vec_env import VecFrameStack
 from hackatari.core import HackAtari
-from utils import load_cleanrl_envs
+
+MAX_NB_OBJECTS = {"Player": 1, "Bear": 1, "House": 1, "Door": 1,
+                  "Bird": 8, "Crab": 8, "Clam": 8, "GreenFish": 8, "FloatingBlock": 24}
+MAX_NB_OBJECTS_HUD = {"Player": 1, "Bear": 1, "House": 1, "Door": 1, "Bird": 8, "Crab": 8, "Clam": 8, "GreenFish": 8, "FloatingBlock": 24,
+                      "Lives": 1, "Temperature": 1, "Score": 1}
 
 
 from stable_baselines3.common.atari_wrappers import (  # isort:skip
@@ -24,7 +22,7 @@ from stable_baselines3.common.atari_wrappers import (  # isort:skip
 
 def make_env(env):
     env = gym.wrappers.RecordEpisodeStatistics(env)
-    env = gym.wrappers.AutoResetWrapper(env)
+    env = gym.wrappers.Autoreset(env)
     env = NoopResetEnv(env, noop_max=30)
     env = MaxAndSkipEnv(env, skip=4)
     env = EpisodicLifeEnv(env)
@@ -32,8 +30,8 @@ def make_env(env):
         env = FireResetEnv(env)
     env = ClipRewardEnv(env)
     env = gym.wrappers.ResizeObservation(env, (84, 84))
-    env = gym.wrappers.GrayScaleObservation(env)
-    env = gym.wrappers.FrameStack(env, 4)
+    env = gym.wrappers.GrayscaleObservation(env)
+    env = gym.wrappers.FrameStackObservation(env, 4)
     return env
 
 
@@ -65,10 +63,10 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
                 env_name="ALE/Frostbite-v5",
                 mode="ram",
                 obs_mode="ori",
-                modifs=[("disable_coconut"), ("random_init"), ("change_level0")],
+                modifs=[("ui_color_red"), ("reposition_floes_medium"), ("no_birds"), ("many_enemies")],
                 rewardfunc_path="in/envs/frostbite/blenderl_reward.py",
                 render_mode=render_mode,
-                render_oc_overlay=render_oc_overlay,
+                render_oc_overlay=render_oc_overlay
             )
             for i in range(n_envs)
         ]
@@ -80,17 +78,17 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
         # self.env._env = make_env(self.env._env)
         self.n_actions = 6
         self.n_raw_actions = 18
-        self.n_objects = 43
+        self.n_objects = 63
         self.n_features = 4  # visible, x-pos, y-pos, right-facing
         self.seed = seed
 
         # Compute index offsets. Needed to deal with multiple same-category objects
         self.obj_offsets = {}
         offset = 0
-        for obj, max_count in MAX_ESSENTIAL_OBJECTS.items():
+        for obj, max_count in MAX_NB_OBJECTS.items():
             self.obj_offsets[obj] = offset
             offset += max_count
-        self.relevant_objects = set(MAX_ESSENTIAL_OBJECTS.keys())
+        self.relevant_objects = set(MAX_NB_OBJECTS.keys())
 
     def reset(self):
         logic_states = []
@@ -154,7 +152,7 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
     def extract_logic_state(self, input_state):
         state = th.zeros((self.n_objects, self.n_features), dtype=th.int32)
 
-        obj_count = {k: 0 for k in MAX_ESSENTIAL_OBJECTS.keys()}
+        obj_count = {k: 0 for k in MAX_NB_OBJECTS.keys()}
 
         for obj in input_state:
             if obj.category not in self.relevant_objects:
