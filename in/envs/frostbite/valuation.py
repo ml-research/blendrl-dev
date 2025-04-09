@@ -122,6 +122,7 @@ def block_above(player: th.Tensor, block: th.Tensor) -> th.Tensor:
     """True iff there is a block right above the player"""
     player_x = player[..., 1]
     player_y = player[..., 2]
+    print(block)
     block_x = block[..., 7]
     block_y = block[..., 8]
     y_distance = player_y - block_y
