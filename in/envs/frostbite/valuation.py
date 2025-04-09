@@ -11,90 +11,75 @@ def enemy_left(player: th.Tensor, enemy: th.Tensor) -> th.Tensor:
     """Goes towards 1 if the player is left of the enemy and the enemy is close."""
     player_x = player[..., 1]
     player_y = player[..., 2]
-    if (enemy[..., 1] == 210):
-        enemy_x = enemy[..., 5]
-        enemy_y = enemy[..., 6]
-    else:
-        enemy_x = enemy[..., 7]
-        enemy_y = enemy[..., 8]
+    enemy_x = enemy[..., 1]
+    enemy_y = enemy[..., 2]
     player_is_left = player_x < enemy_x
     enemy_on_same_y = abs(player_y - enemy_y) < 64
-    if (player_is_left and enemy_on_same_y):
+    if (player_is_left&enemy_on_same_y).all():
         result = th.clip(player_is_left * (64 - (enemy_x - player_x)) / 64, 0, 1)
         return result
-    return bool_to_probs(0)
+    return bool_to_probs(th.tensor([False]))
 
 def enemy_right(player: th.Tensor, enemy: th.Tensor) -> th.Tensor:
     """Goes towards 1 if the player is right of the enemy and the enemy is close."""
     player_x = player[..., 1]
     player_y = player[..., 2]
-    if (enemy[..., 1] == 210):
-        enemy_x = enemy[..., 5]
-        enemy_y = enemy[..., 6]
-    else:
-        enemy_x = enemy[..., 7]
-        enemy_y = enemy[..., 8]
+    enemy_x = enemy[..., 1]
+    enemy_y = enemy[..., 2]
     player_is_right = enemy_x < player_x 
     enemy_on_same_y = abs(player_y - enemy_y) < 64
-    if (player_is_right and enemy_on_same_y):
+    if (player_is_right&enemy_on_same_y).all():
         result = th.clip(player_is_right * (64 - (player_x - enemy_x)) / 64, 0, 1)
-        return bool_to_probs(result)
-    return bool_to_probs(0)
+        return result
+    return bool_to_probs(th.tensor([False]))
 
 def no_enemy_left(player: th.Tensor, enemy: th.Tensor) -> th.Tensor:
     """Goes towards 1 if there is no enemy left of the player."""
     enemy_on_left = enemy_left(player, enemy)
     result = th.ones_like(enemy_on_left) - enemy_on_left
-    return bool_to_probs(result)
+    return result
 
 def no_enemy_right(player: th.Tensor, enemy: th.Tensor) -> th.Tensor:
     """Goes towards 1 if there is no enemy right of the player."""
-    result = 1 - enemy_right(player, enemy)
-    return bool_to_probs(result)
+    enemy_on_right = enemy_right(player, enemy)
+    result = th.ones_like(enemy_on_right) - enemy_on_right
+    return result
 
 def no_enemy_above(player: th.Tensor, enemy: th.Tensor) -> th.Tensor:
     """True iff there is an enemy right above the player"""
     player_x = player[..., 1]
     player_y = player[..., 2]
-    if (enemy[..., 1] == 210):
-        enemy_x = enemy[..., 5]
-        enemy_y = enemy[..., 6]
-    else:
-        enemy_x = enemy[..., 7]
-        enemy_y = enemy[..., 8]
+    enemy_x = enemy[..., 1]
+    enemy_y = enemy[..., 2]
     y_distance = player_y - enemy_y
-    return bool_to_probs(y_distance > 0 and y_distance <= 40 and abs(player_x - enemy_x) < 20)
+    return bool_to_probs((y_distance > 0) & (y_distance <= 40) & (abs(player_x - enemy_x) < 20))
 
 def no_enemy_below(player: th.Tensor, enemy: th.Tensor) -> th.Tensor:
     """True iff there is a block below the player"""
     player_x = player[..., 1]
     player_y = player[..., 2]
-    if (enemy[..., 1] == 210):
-        enemy_x = enemy[..., 5]
-        enemy_y = enemy[..., 6]
-    else:
-        enemy_x = enemy[..., 7]
-        enemy_y = enemy[..., 8]
+    enemy_x = enemy[..., 1]
+    enemy_y = enemy[..., 2]
     y_distance = enemy_y - player_y
-    return bool_to_probs(y_distance > 0 and y_distance <= 40 and abs(player_x - enemy_x) < 20)
+    return bool_to_probs((y_distance > 0) & (y_distance <= 40) & (abs(player_x - enemy_x) < 20))
 
 def fish_above(player: th.Tensor, block: th.Tensor) -> th.Tensor:
     """True iff there is a fish right above the player"""
     player_x = player[..., 1]
     player_y = player[..., 2]
-    block_x = block[..., 7]
-    block_y = block[..., 8]
+    block_x = block[..., 1]
+    block_y = block[..., 2]
     y_distance = player_y - block_y
-    return bool_to_probs(y_distance > 0 and y_distance <= 30 and abs(player_x - block_x) < 20)
+    return bool_to_probs((y_distance > 0) & (y_distance <= 30) & (abs(player_x - block_x) < 20))
 
 def fish_below(player: th.Tensor, block: th.Tensor) -> th.Tensor:
     """True iff there is a fish right below the player"""
     player_x = player[..., 1]
     player_y = player[..., 2]
-    fish_x = block[..., 5]
-    fish_y = block[..., 6]
+    fish_x = block[..., 1]
+    fish_y = block[..., 2]
     y_distance = fish_y - player_y
-    return bool_to_probs(y_distance > 0 and y_distance <= 30 and abs(player_x - fish_x) < 20)
+    return bool_to_probs((y_distance > 0) & (y_distance <= 30) & (abs(player_x - fish_x) < 20))
 
 
 def left_of_door(player: th.Tensor, door: th.Tensor) -> th.Tensor:
@@ -116,52 +101,52 @@ def door_exists(door: th.Tensor) -> th.Tensor:
     return bool_to_probs(result)
 
 def no_door_exists(door: th.Tensor) -> th.Tensor:
-    return bool_to_probs(1-door_exists(door))
+    result = door[..., 0] != 1
+    return bool_to_probs(result)
 
 def block_above(player: th.Tensor, block: th.Tensor) -> th.Tensor:
     """True iff there is a block right above the player"""
     player_x = player[..., 1]
     player_y = player[..., 2]
-    print(block)
-    block_x = block[..., 7]
-    block_y = block[..., 8]
+    block_x = block[..., 1]
+    block_y = block[..., 2]
     y_distance = player_y - block_y
-    return bool_to_probs(y_distance > 0 and y_distance <= 40 and abs(player_x - block_x) < 20)
+    return bool_to_probs((y_distance > 0) & (y_distance <= 40) & (abs(player_x - block_x) < 20))
 
 def block_below(player: th.Tensor, block: th.Tensor) -> th.Tensor:
     """True iff there is a block below the player"""
     player_x = player[..., 1]
     player_y = player[..., 2]
-    block_x = block[..., 7]
-    block_y = block[..., 8]
+    block_x = block[..., 1]
+    block_y = block[..., 2]
     y_distance = block_y - player_y
-    return bool_to_probs(y_distance > 0 and y_distance <= 40 and abs(player_x - block_x) < 20)
+    return bool_to_probs((y_distance > 0) & (y_distance <= 40) & (abs(player_x - block_x) < 20))
 
 def no_block_above(player: th.Tensor, block: th.Tensor) -> th.Tensor:
-    """True iff there is no block above the player"""
+    """Goes towards 1 iff there is no block above the player"""
     block_is_above = block_above(player, block)
     result = th.ones_like(block_is_above) - block_is_above
-    return bool_to_probs(result)
+    return result
 
 def no_block_below(player: th.Tensor, block: th.Tensor) -> th.Tensor:
-    """True iff there is no block above the player"""
+    """Goes towards 1 iff there is no block above the player"""
     block_is_below = block_below(player, block)
     result = th.ones_like(block_is_below) - block_is_below
-    return bool_to_probs(result)
+    return result
 
 def white_block_above(player: th.Tensor, block: th.Tensor) -> th.Tensor:
     """True iff there is a white block somewhere above the player"""
     player_y = player[..., 2]
-    block_y = block[..., 8]
+    block_y = block[..., 2]
     block_is_white = block[...,1] == 214
-    return bool_to_probs(player_y > block_y and block_is_white)
+    return bool_to_probs((player_y > block_y) & (block_is_white))
 
 def white_block_below(player: th.Tensor, block: th.Tensor) -> th.Tensor:
     """True iff there is a white block somewhere below the player"""
     player_y = player[..., 2]
-    block_y = block[..., 8]
+    block_y = block[..., 2]
     block_is_white = block[...,1] == 214
-    return bool_to_probs(player_y < block_y and block_is_white)
+    return bool_to_probs((player_y < block_y) & (block_is_white))
 
 def far_right(player:th.Tensor) -> th.Tensor:
     player_x = player[..., 1]
@@ -174,7 +159,7 @@ def far_left(player:th.Tensor) -> th.Tensor:
     return result
 
 def neural_agent_value(player:th.Tensor) -> th.Tensor:
-    return bool_to_probs(0)
+    return bool_to_probs(th.tensor([False]))
 
 def logic_agent_value(player:th.Tensor) -> th.Tensor:
-    return bool_to_probs(1)
+    return bool_to_probs(th.tensor([True]))
