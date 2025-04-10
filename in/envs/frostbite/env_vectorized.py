@@ -79,7 +79,7 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
         self.n_actions = 6
         self.n_raw_actions = 18
         self.n_objects = 63
-        self.n_features = 4  # visible, x-pos, y-pos, right-facing
+        self.n_features = 4 #visible, x-pos, y-pos, right-facing
         self.seed = seed
 
         # Compute index offsets. Needed to deal with multiple same-category objects

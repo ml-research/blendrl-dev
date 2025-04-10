@@ -138,14 +138,14 @@ def white_block_above(player: th.Tensor, block: th.Tensor) -> th.Tensor:
     """True iff there is a white block somewhere above the player"""
     player_y = player[..., 2]
     block_y = block[..., 2]
-    block_is_white = block[...,1] == 214
+    block_is_white = block[...,3] == 214
     return bool_to_probs((player_y > block_y) & (block_is_white))
 
 def white_block_below(player: th.Tensor, block: th.Tensor) -> th.Tensor:
     """True iff there is a white block somewhere below the player"""
     player_y = player[..., 2]
     block_y = block[..., 2]
-    block_is_white = block[...,1] == 214
+    block_is_white = block[...,3] == 214
     return bool_to_probs((player_y < block_y) & (block_is_white))
 
 def far_right(player:th.Tensor) -> th.Tensor:

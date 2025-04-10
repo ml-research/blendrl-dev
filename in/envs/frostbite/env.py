@@ -68,7 +68,7 @@ class NudgeEnv(NudgeBaseEnv):
         self.env._env = make_env(self.env._env)
         self.n_actions = 6
         self.n_raw_actions = 18
-        self.n_objects = 43
+        self.n_objects = 63
         self.n_features = 4  # visible, x-pos, y-pos, right-facing
         self.seed = seed
 
