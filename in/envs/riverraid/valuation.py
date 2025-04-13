@@ -36,8 +36,8 @@ def close_by_helicopter(player: th.Tensor, helicopter: th.Tensor) -> th.Tensor:
     return _close_by(player, helicopter, threshold=35)
 
 
-def close_by_enemy_base(player: th.Tensor, enemy_base: th.Tensor) -> th.Tensor:
-    return _close_by(player, enemy_base, threshold=30)
+def close_by_enemy_jet(player: th.Tensor, enemy_jet: th.Tensor) -> th.Tensor:
+    return _close_by(player, enemy_jet, threshold=30)
 
 
 def close_by_bridge(player: th.Tensor, bridge: th.Tensor) -> th.Tensor:
@@ -48,13 +48,13 @@ def close_by_enemy(
     player: th.Tensor,
     enemy_ship: th.Tensor,
     helicopter: th.Tensor,
-    enemy_base: th.Tensor,
+    enemy_jet: th.Tensor,
 ) -> th.Tensor:
     return th.maximum(
         _close_by(player, enemy_ship, threshold=40),
         th.maximum(
             _close_by(player, helicopter, threshold=35),
-            _close_by(player, enemy_base, threshold=30),
+            _close_by(player, enemy_jet, threshold=30),
         ),
     )
 
@@ -72,8 +72,8 @@ def far_from_helicopter(player: th.Tensor, helicopter: th.Tensor) -> th.Tensor:
     return _far_from(player, helicopter, threshold=35)
 
 
-def far_from_enemy_base(player: th.Tensor, enemy_base: th.Tensor) -> th.Tensor:
-    return _far_from(player, enemy_base, threshold=30)
+def far_from_enemy_jet(player: th.Tensor, enemy_jet: th.Tensor) -> th.Tensor:
+    return _far_from(player, enemy_jet, threshold=30)
 
 
 def far_from_bridge(player: th.Tensor, bridge: th.Tensor) -> th.Tensor:
@@ -84,13 +84,13 @@ def far_from_enemy(
     player: th.Tensor,
     enemy_ship: th.Tensor,
     helicopter: th.Tensor,
-    enemy_base: th.Tensor,
+    enemy_jet: th.Tensor,
 ) -> th.Tensor:
     return th.maximum(
         _far_from(player, enemy_ship, threshold=40),
         th.maximum(
             _far_from(player, helicopter, threshold=35),
-            _far_from(player, enemy_base, threshold=30),
+            _far_from(player, enemy_jet, threshold=30),
         ),
     )
 
@@ -112,7 +112,7 @@ def same_level_helicopter(player: th.Tensor, helicopter: th.Tensor) -> th.Tensor
     return _same_level(player, helicopter)
 
 
-def same_level_enemy_base(player: th.Tensor, enemy: th.Tensor) -> th.Tensor:
+def same_level_enemy_jet(player: th.Tensor, enemy: th.Tensor) -> th.Tensor:
     return _same_level(player, enemy)
 
 
@@ -144,11 +144,11 @@ def left_of_helicopter(player: th.Tensor, helicopter: th.Tensor) -> th.Tensor:
     return _left_of(player, helicopter)
 
 
-def right_of_enemy_base(player: th.Tensor, enemy: th.Tensor) -> th.Tensor:
+def right_of_enemy_jet(player: th.Tensor, enemy: th.Tensor) -> th.Tensor:
     return _right_of(player, enemy)
 
 
-def left_of_enemy_base(player: th.Tensor, enemy: th.Tensor) -> th.Tensor:
+def left_of_enemy_jet(player: th.Tensor, enemy: th.Tensor) -> th.Tensor:
     return _left_of(player, enemy)
 
 

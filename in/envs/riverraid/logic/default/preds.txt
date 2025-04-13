@@ -5,13 +5,13 @@ right_enemy_ship:1:image
 left_enemy_ship:1:image
 right_helicopter:1:image
 left_helicopter:1:image
-right_enemy_base:1:image
-left_enemy_base:1:image
+right_enemy_jet:1:image
+left_enemy_jet:1:image
 right_bridge:1:image
 left_bridge:1:image
 fire_at_enemy_ship:1:image
 fire_at_helicopter:1:image
-fire_at_enemy_base:1:image
+fire_at_enemy_jet:1:image
 fire_at_bridge:1:image
 neural_agent:1:image
 logic_agent:1:image

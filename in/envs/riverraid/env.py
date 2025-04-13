@@ -34,6 +34,11 @@ MAX_NB_OBJECTS = {
 }
 MAX_NB_OBJECTS_HUD = dict(MAX_NB_OBJECTS, **{"PlayerScore": 1, "Lives": 1})
 
+"""gym.envs.registration.register(
+    id="ALE/Riverraid-v5",
+    entry_point="gymnasium.envs.atari:AtariEnv",
+    kwargs={"rom_file": "roms/River Raid (1982) (Activision, Carol Shaw) (AX-020, AX-020-04) ~.bin"},
+)"""
 
 def make_env(env):
     env = gym.wrappers.RecordEpisodeStatistics(env)

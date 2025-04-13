@@ -2,18 +2,16 @@ image:img
 
 oplayer:obj1
 
-oriver:obj2
+omissile:obj2
 
-ofuel:obj3,obj4,obj5,obj6
+ofueldepot:obj3,obj4,obj5,obj6
 
-oenemyship:obj7,obj8,obj9,obj10
+otanker:obj7,obj8,obj9,obj10
 
-obridge:obj11
+ohelicopter:obj11,obj12,obj13,obj14
 
-oenemybase:obj12,obj13,obj14
+ohouse:obj15,obj16,obj17,obj18
 
-ohelicopter:obj15,obj16,obj17,obj18
+ojet:obj19,obj20,obj21,obj22
 
-obullet:obj19,obj20,obj21,obj22
-
-oenemystructure:obj23,obj24
+obridge:obj23
