@@ -1,4 +1,8 @@
-python train_blenderl.py --env-name riverraid --joint-training --save_steps 500000 --num-steps 128 --num-envs 5 --gamma 0.99
+python train_blenderl.py --env-name riverraid --joint-training --save_steps 500000 --num-steps 128 --num-envs 6 --gamma 0.99
 
-python play_gui.py --env-name riverraid --agent-path out/runs/riverraid_softmax_blender_logic_lr_0.00025_llr_0.00025_blr_0.00025_gamma_0.99_bentcoef_0.01_numenvs_2_steps_32_pretrained_False_joint_True_0
 python play_gui.py --env-name riverraid --agent-path out/runs/riverraid_softmax_blender_logic_lr_0.00025_llr_0.00025_blr_0.00025_gamma_0.99_bentcoef_0.01_numenvs_6_steps_128_pretrained_False_joint_True_0
+
+
+python play_gui.py --env-name riverraid --agent-path out/runs/riverraid_softmax_blender_logic_lr_0.00025_llr_0.00025_blr_0.00025_gamma_0.99_bentcoef_0.01_numenvs_6_steps_128_pretrained_False_joint_True_0
+
+scp -r blendrl@192.168.94.2:~/blendrl/out/runs/riverraid_softmax_blender_logic_lr_0.00025_llr_0.00025_blr_0.00025_gamma_0.99_bentcoef_0.01_numenvs_6_steps_128_pretrained_False_joint_True_0 ./out_riverraid
