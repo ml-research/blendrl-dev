@@ -30,7 +30,7 @@ def reward_function(self) -> float:
 
      # Encourage staying near the center while avoiding edges
     distance_from_center = abs(x - screen_center)
-    center_reward = 5.0 - (distance_from_center / screen_center) ** 1.5 
+    center_reward = 1.0 - (distance_from_center / screen_center) ** 1.5 
     edge_penalty = max(0, (abs(x - max_x / 2) / (max_x / 2)) ** 3) 
 
     reward += center_reward - edge_penalty 
