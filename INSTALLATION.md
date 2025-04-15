@@ -1,5 +1,13 @@
 # Installation
 
+## Docker Image
+To build a Docker image with all requirements installed (named `blendrl:base`), execute the [build_docker.sh](scripts/build_docker.sh) script:
+```bash
+./scripts/build_docker.sh
+```
+
+## Locally
+
 1. Install all requirements via
     ```bash
     pip install -r requirements.txt
@@ -41,13 +49,18 @@
     ```
 Otherwise, please refer to the [official installation guide](https://pytorch-geometric.readthedocs.io/en/latest/notes/installation.html).
 
-4. You can now run the training script, e.g.:
+4. Install difflogic (forked from [https://github.com/Felix-Petersen/difflogic](https://github.com/Felix-Petersen/difflogic)):
+   ```bash
+   pip install -e third_party/difflogic
+   ```
+
+5. You can now run the training script, e.g.:
     ```bash
     python train_blenderl.py --env-name seaquest --joint-training --num-steps 128 --num-envs 5 --gamma 0.99　
     ```
     Scripts of the full training to reproduce the result are provided [here](scripts/training.sh).
 <!-- 
-5. You can also run the evaluation script:
+6. You can also run the evaluation script:
     ```bash
     python evaluate.py --env-name seaquest --agent-path models/seaquest_demo
     ``` -->
