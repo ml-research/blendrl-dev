@@ -1,17 +1,14 @@
 import time
 from typing import Sequence
-import torch
-from HackAtari.hackatari.games import kangaroo
-from blendrl.env_vectorized import VectorizedNudgeBaseEnv
-from blendrl.env_utils import make_env
-from hackatari.core import HackAtari
-import torch as th
-from ocatari.ram.kangaroo import MAX_ESSENTIAL_OBJECTS
-import gymnasium as gym
 
-import time
+import torch
+import torch as th
+from hackatari.core import HackAtari
+from ocatari.ram.kangaroo import MAX_ESSENTIAL_OBJECTS
 
 from blendrl.env_utils import kangaroo_modifs
+from blendrl.env_utils import make_env
+from blendrl.env_vectorized import VectorizedNudgeBaseEnv
 
 
 class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
