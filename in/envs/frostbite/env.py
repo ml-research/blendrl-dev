@@ -19,13 +19,8 @@ from stable_baselines3.common.atari_wrappers import (  # isort:skip
 )
 
 def make_env(env):
-    # def thunk():
-        # if capture_video and idx == 0:
-            # env = gym.make(env_id, render_mode="rgb_array")
-            # env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
-        # else:
-            # env = gym.make(env_id)
     env = gym.wrappers.RecordEpisodeStatistics(env)
+    env = gym.wrappers.AutoResetWrapper(env)
     env = NoopResetEnv(env, noop_max=30)
     env = MaxAndSkipEnv(env, skip=4)
     env = EpisodicLifeEnv(env)
@@ -33,10 +28,8 @@ def make_env(env):
         env = FireResetEnv(env)
     env = ClipRewardEnv(env)
     env = gym.wrappers.ResizeObservation(env, (84, 84))
-    env = gym.wrappers.GrayscaleObservation(env)
-    env = gym.wrappers.FrameStackObservation(env, 4)
-    env = gym.wrappers.Autoreset(env)
-    return env
+    env = gym.wrappers.GrayScaleObservation(env)
+    env = gym.wrappers.FrameStack(env, 4)
 
 
 
