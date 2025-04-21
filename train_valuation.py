@@ -1,36 +1,26 @@
 import os
+import pickle
 import random
+import sys
 import time
-from dataclasses import dataclass
+from pathlib import Path
+from typing import Optional
 
-import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import tyro
+import wandb
+from dataclasses import dataclass
+from rtpt import RTPT
 from torch.utils.tensorboard import SummaryWriter
-
 
 # added
 from blendrl.agents.blender_agent import BlenderActorCritic
 from blendrl.env_vectorized import VectorizedNudgeBaseEnv
-from nudge.utils import save_hyperparams
-import os
-import sys
-import time
-from pathlib import Path
-
-import pickle
-import random
-import numpy as np
-from rtpt import RTPT
-
 from nudge.utils import load_model_train
-from nsfr.common import load_predicate_model
-
-# Log in to your W&B account
-import wandb
+from nudge.utils import save_hyperparams
 
 OUT_PATH = Path("out_val/")
 IN_PATH = Path("in/")
@@ -61,7 +51,7 @@ class Args:
     """if toggled, this experiment will be tracked with Weights and Biases"""
     wandb_project_name: str = "blendRL_val"
     """the wandb's project name"""
-    wandb_entity: str = None
+    wandb_entity: Optional[str] = None
     """the entity (team) of wandb's project"""
     capture_video: bool = False
     """whether to capture videos of the agent performances (check out `videos` folder)"""
@@ -69,7 +59,7 @@ class Args:
     # Algorithm specific arguments
     # env_id: str = "Seaquest-v4"
     # """the id of the environment"""
-    total_timesteps: int = 60000000
+    total_timesteps: int = 60_000_000
     """total timesteps of the experiments"""
     num_envs: int = 20
     """the number of parallel game environments"""
@@ -97,7 +87,7 @@ class Args:
     """coefficient of the value function"""
     max_grad_norm: float = 0.5
     """the maximum norm for the gradient clipping"""
-    target_kl: float = None
+    target_kl: Optional[float] = None
     """the target KL divergence threshold"""
 
     # to be filled in runtime
@@ -121,7 +111,7 @@ class Args:
     """the mode for the agent"""
     rules: str = "default"
     """the ruleset used in the agent"""
-    save_steps: int = 5000000
+    save_steps: int = 5_000_000
     """the number of steps to save models"""
     pretrained: bool = False
     """to use pretrained neural agent"""
@@ -146,7 +136,7 @@ def main():
     args = tyro.cli(Args)
     rtpt = RTPT(
         name_initials="HS",
-        experiment_name="BlendeRL",
+        experiment_name="BlendRL",
         max_iterations=int(args.total_timesteps / args.save_steps),
     )
     args.batch_size = int(args.num_envs * args.num_steps)
