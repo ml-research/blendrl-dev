@@ -1,3 +1,5 @@
+import os
+
 import torch
 import numpy as np
 import importlib.util
@@ -84,9 +86,17 @@ def extract_for_cgen_explaining(coin_jump):
 
 
 def load_module(path: str):
-    spec = importlib.util.spec_from_file_location("module", path)
+    module_name = path.replace(os.path.sep, ".")
+    if module_name.endswith(".py"):
+        module_name = module_name[:-3]
+
+    # Check if module has already been loaded
+    if module_name in sys.modules:
+        return sys.modules[module_name]
+
+    spec = importlib.util.spec_from_file_location(module_name, path)
     module = importlib.util.module_from_spec(spec)
-    sys.modules["module.name"] = module
+    sys.modules[module_name] = module
     spec.loader.exec_module(module)
     return module
 
