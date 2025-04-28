@@ -1,8 +1,10 @@
+import json
+import logging
 import os
-import pickle
 import random
 import sys
 import time
+from collections import defaultdict
 from pathlib import Path
 from typing import Optional
 
@@ -17,9 +19,8 @@ from rtpt import RTPT
 from torch.utils.tensorboard import SummaryWriter
 
 # added
-from blendrl.agents.blender_agent import BlenderActorCritic
 from blendrl.env_vectorized import VectorizedNudgeBaseEnv
-from nudge.utils import load_model_train
+from misc.io import get_most_recent_checkpoint
 from nudge.utils import save_hyperparams
 
 OUT_PATH = Path("out_val/")
@@ -36,6 +37,25 @@ def get_predicate_model(env_name: str, device: str):
     val_module = __import__(val_fn_path)
     predicate_model = val_module.PredicateModel(device=device)
     return predicate_model
+
+
+def load_predicate_model(checkpoint_path: Path, model: any):
+    # load model state
+    with open(checkpoint_path, "rb") as f:
+        device = torch.device('cpu')
+        model.load_state_dict(state_dict=torch.load(f, map_location=device, weights_only=True))
+
+
+def load_most_recent_predicate_model(checkpoint_dir: Path, model: any) -> int:
+    # get latest checkpoint
+    num_steps, checkpoint_path = get_most_recent_checkpoint(checkpoint_dir)
+
+    # load model state
+    load_predicate_model(checkpoint_path, model)
+
+    # return latest step
+    return num_steps
+
 
 @dataclass
 class Args:
@@ -133,18 +153,41 @@ class Args:
 
 def main():
 
+    # parse arguments
     args = tyro.cli(Args)
+    args.batch_size = int(args.num_envs * args.num_steps)
+    args.minibatch_size = int(args.batch_size // args.num_minibatches)
+    args.num_iterations = args.total_timesteps // args.batch_size
+
+    # setup process
     rtpt = RTPT(
         name_initials="HS",
         experiment_name="BlendRL",
         max_iterations=int(args.total_timesteps / args.save_steps),
     )
-    args.batch_size = int(args.num_envs * args.num_steps)
-    args.minibatch_size = int(args.batch_size // args.num_minibatches)
-    args.num_iterations = args.total_timesteps // args.batch_size
-    model_description = "{}_blender_{}".format(args.blend_function, args.blender_mode)
-    learning_description = f"lr_{args.learning_rate}_llr_{args.logic_learning_rate}_blr_{args.blender_learning_rate}_gamma_{args.gamma}_bentcoef_{args.blend_ent_coef}_numenvs_{args.num_envs}_steps_{args.num_steps}_"
-    run_name = f"{args.env_name}_{model_description}_{learning_description}_{args.seed}"
+
+    # create directories for logging and model checkpoints
+    run_name = args.exp_name
+    experiment_dir = OUT_PATH / "runs" / run_name
+    out_log_path = experiment_dir / "log.txt"
+    config_path = experiment_dir / "config.yaml"
+    logs_path = experiment_dir / "logs.json"
+    checkpoint_dir = experiment_dir / "checkpoints"
+    writer_base_dir = OUT_PATH / "tensorboard"
+    writer_dir = writer_base_dir / run_name
+    image_dir = experiment_dir / "images"
+    os.makedirs(checkpoint_dir, exist_ok=True)
+    os.makedirs(image_dir, exist_ok=True)
+    os.makedirs(writer_dir, exist_ok=True)
+
+    # configure logger
+    logging.basicConfig(filename=out_log_path,
+                        filemode='a',
+                        format='%(asctime)s,%(msecs)03d %(name)s %(levelname)s %(message)s',
+                        datefmt='%Y-%m-%d %H:%M:%S',
+                        level=logging.DEBUG)
+
+    # setup metrics tracking
     if args.track:
         wandb.init(
             project=args.wandb_project_name + "_" + args.env_name,
@@ -154,55 +197,55 @@ def main():
             name=run_name,
             monitor_gym=True,
             save_code=True,
+            id=run_name,
+            resume="allow"
         )
 
-    # for logging and model saving
-    experiment_dir = OUT_PATH / "runs" / run_name  # / now.strftime("%y-%m-%d-%H-%M")
-    checkpoint_dir = experiment_dir / "checkpoints"
-    writer_base_dir = OUT_PATH / "tensorboard"  # Path("tensorboard")
-    writer_dir = writer_base_dir / run_name
-    image_dir = experiment_dir / "images"
-    os.makedirs(checkpoint_dir, exist_ok=True)
-    os.makedirs(image_dir, exist_ok=True)
-    os.makedirs(writer_dir, exist_ok=True)
-
-    writer = SummaryWriter(writer_dir)
+    writer = SummaryWriter(str(writer_dir))
     writer.add_text(
         "hyperparameters",
         "|param|value|\n|-|-|\n%s"
         % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
     )
 
-    # TRY NOT TO MODIFY: seeding
+    # set seeds (do not modify)
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
+    # set device
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
+    # setup game environments
     envs = VectorizedNudgeBaseEnv.from_name(
         args.env_name, n_envs=args.num_envs, mode=args.algorithm, seed=args.seed
     )  # $, **env_kwargs)
 
-    agent = BlenderActorCritic(
-        envs,
-        args.rules,
-        args.actor_mode,
-        args.blender_mode,
-        args.blend_function,
-        args.reasoner,
-        device,
-    )
+    # agent = BlenderActorCritic(
+    #     envs,
+    #     args.rules,
+    #     args.actor_mode,
+    #     args.blender_mode,
+    #     args.blend_function,
+    #     args.reasoner,
+    #     device,
+    # )
+
+    # load agent model
     from nudge.utils import load_model
     agent_path = "models/{env_name}_demo".format(env_name=args.env_name)
-    agent = load_model(
-            agent_path, device=device
-        )
-    # predicate_model = get_predicate_model(args.env_name, device)
+    agent = load_model(agent_path, device=device)
+
+    # freeze agent
+    agent.requires_grad_(False)
+
+    # load predicate model
     import importlib
     valuation_module = importlib.import_module(f"in.envs.{args.env_name}.valuation")
     predicate_model = valuation_module.predicate_model
+    predicate_model.train()
+
     # if args.pretrained:
     #     # load neural agent weights
     #     agent.visual_neural_actor.load_state_dict(
@@ -211,28 +254,35 @@ def main():
     #     print("Pretrained neural agent loaded!!!")
     #     agent.to(device)
 
+    # load model and logs from latest checkpoint
+    global_step = 0
+    save_step_bar = 0
+    logs = None
     if args.recover:
         # load saved agent with the most recent step
-        agent, most_recent_step = load_model_train(
-            experiment_dir, n_envs=args.num_envs, device=device
-        )
+        # agent, most_recent_step = load_model_train(
+        #     experiment_dir, n_envs=args.num_envs, device=device
+        # )
+
+        # load latest predicate model
+        latest_steps = load_most_recent_predicate_model(checkpoint_dir, predicate_model)
+        if latest_steps is not None:
+            global_step = latest_steps
+            save_step_bar = global_step + args.save_steps
+            print(f"Resuming training from step {global_step}")
+
         # load training logs
-        with open(checkpoint_dir / "training_log.pkl", "rb") as f:
-            (
-                episodic_returns,
-                episodic_lengths,
-                value_losses,
-                policy_losses,
-                entropies,
-                blend_entropies,
-            ) = pickle.load(f)
-    else:
-        episodic_returns = []
-        episodic_lengths = []
-        value_losses = []
-        policy_losses = []
-        entropies = []
-        blend_entropies = []
+        if os.path.exists(logs_path):
+            with open(logs_path, "r") as logs_file:
+                logs = json.load(logs_file)
+
+    if not args.recover or logs is None:
+        logs = defaultdict(list)
+        logs["total_timesteps"] = args.total_timesteps
+        logs["num_envs"] = args.num_envs
+        logs["num_steps"] = args.num_steps
+        logs["num_iterations"] = args.num_iterations
+        logs["batch_size"] = args.batch_size
 
     # rewards actually used to train modes
     episodic_game_returns = torch.zeros((args.num_envs)).to(device)
@@ -241,12 +291,14 @@ def main():
     if args.track:
         wandb.watch(
             [
-                agent.logic_actor,
-                agent.logic_critic,
-                agent.visual_neural_actor,
-                agent.blender,
-            ]
-        )  # , log="all")
+                # agent.logic_actor,
+                # agent.logic_critic,
+                # agent.visual_neural_actor,
+                # agent.blender,
+                predicate_model
+            ],
+            log="all"
+        )
 
     rtpt.start()
     optimizer = optim.Adam(
@@ -274,11 +326,6 @@ def main():
     values = torch.zeros((args.num_steps, args.num_envs)).to(device)
 
     # TRY NOT TO MODIFY: start the game
-    global_step = 0
-    save_step_bar = 0  # args.save_steps
-    if args.recover:
-        global_step = most_recent_step
-        save_step_bar = most_recent_step
     start_time = time.time()
     next_logic_obs, next_obs = envs.reset()  # (seed=seed)
     # 1 env
@@ -286,14 +333,14 @@ def main():
     next_obs = torch.Tensor(next_obs).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
 
-    for iteration in range(1, args.num_iterations + 1):
+    while global_step < args.total_timesteps:
         # Annealing the rate if instructed to do so.
         if args.anneal_lr:
-            frac = 1.0 - (iteration - 1.0) / args.num_iterations
-            lrnow = frac * args.learning_rate
+            frac = 1.0 - (global_step / args.total_timesteps)
+            lrnow = frac * args.logic_learning_rate
             optimizer.param_groups[0]["lr"] = lrnow
 
-        for step in range(0, args.num_steps):
+        for step in range(args.num_steps):
             # update rtpt
             global_step += args.num_envs
             obs[step] = next_obs
@@ -341,8 +388,8 @@ def main():
                     writer.add_scalar(
                         "charts/episodic_length", info["episode"]["l"], global_step
                     )
-                    episodic_returns.append(info["episode"]["r"])
-                    episodic_lengths.append(info["episode"]["l"])
+                    logs["episodic_returns"].append(info["episode"]["r"])
+                    logs["episodic_lengths"].append(info["episode"]["l"])
 
                     # save the game reward and reset
                     writer.add_scalar(
@@ -367,21 +414,13 @@ def main():
                 save_hyperparams(
                     args=args,  # signature(main),
                     # local_scope=locals(),
-                    save_path=experiment_dir / "config.yaml",
+                    save_path=config_path,
                     print_summary=True,
                 )
 
                 # save training data
-                training_log = (
-                    episodic_returns,
-                    episodic_lengths,
-                    value_losses,
-                    policy_losses,
-                    entropies,
-                    blend_entropies,
-                )
-                with open(checkpoint_dir / "training_log.pkl", "wb") as f:
-                    pickle.dump(training_log, f)
+                with open(logs_path, "w") as f:
+                    json.dump(logs, f)
 
                 # increase the updated bar
                 save_step_bar += args.save_steps
@@ -478,8 +517,8 @@ def main():
                 loss = pg_loss + joint_entropy_loss + v_loss * args.vf_coef
 
                 optimizer.zero_grad()
-                loss.backward(retain_graph=True)
-                nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
+                loss.backward()
+                nn.utils.clip_grad_norm_(predicate_model.parameters(), args.max_grad_norm)
                 optimizer.step()
 
             if args.target_kl is not None and approx_kl > args.target_kl:
@@ -493,6 +532,7 @@ def main():
         writer.add_scalar(
             "charts/learning_rate", optimizer.param_groups[0]["lr"], global_step
         )
+        writer.add_scalar("losses/loss", loss.item(), global_step)
         writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
         writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
         writer.add_scalar("losses/entropy", entropy_loss.item(), global_step)
@@ -511,10 +551,10 @@ def main():
             )
 
         # save training data
-        value_losses.append(v_loss.item())
-        policy_losses.append(pg_loss.item())
-        entropies.append(entropy_loss.item())
-        blend_entropies.append(blend_entropy_loss.item())
+        logs["value_losses"].append(v_loss.item())
+        logs["policy_losses"].append(pg_loss.item())
+        logs["entropies"].append(entropy_loss.item())
+        logs["blend_entropies"].append(blend_entropy_loss.item())
 
         # print current agent information
         agent._print()

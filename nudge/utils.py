@@ -125,7 +125,7 @@ def load_model(model_dir,
 
     # Load the model weights
     with open(checkpoint_path, "rb") as f:
-        model.load_state_dict(state_dict=torch.load(f, map_location=torch.device('cpu')))
+        model.load_state_dict(state_dict=torch.load(f, map_location=torch.device('cpu'), weights_only=True))
     # model.logic_actor.im.W = torch.nn.Parameter(model.logic_actor.im.init_identity_weights(device))
     # print(model.logic_actor.im.W)
 
