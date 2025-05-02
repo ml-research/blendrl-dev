@@ -5,7 +5,7 @@ from ocatari.core import OCAtari
 from hackatari.core import HackAtari
 import numpy as np
 import torch as th
-
+from packaging import version
 # from ocatari.ram.riverraid import MAX_NB_OBJECTS
 import gymnasium as gym
 from stable_baselines3.common.env_util import make_atari_env
@@ -42,7 +42,7 @@ MAX_NB_OBJECTS_HUD = dict(MAX_NB_OBJECTS, **{"PlayerScore": 1, "Lives": 1})
 
 GYMNASIUM_VERSION = version.parse(gym.__version__)
 
-if GYMNASIUM_VERSION <= version.parse("0.3.0"):
+if GYMNASIUM_VERSION <= version.parse("0.30.0"):
     def make_env(env):
         env = gym.wrappers.RecordEpisodeStatistics(env)
         env = gym.wrappers.AutoResetWrapper(env)

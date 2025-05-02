@@ -4,7 +4,7 @@ import torch
 from blendrl.env_vectorized import VectorizedNudgeBaseEnv
 from hackatari.core import HackAtari
 import torch as th
-
+from packaging import version
 # from ocatari.ram.riverraid import MAX_NB_OBJECTS, MAX_NB_OBJECTS_HUD
 import gymnasium as gym
 
@@ -36,7 +36,7 @@ MAX_NB_OBJECTS_HUD = dict(MAX_NB_OBJECTS, **{"PlayerScore": 1, "Lives": 1})
 
 GYMNASIUM_VERSION = version.parse(gym.__version__)
 
-if GYMNASIUM_VERSION <= version.parse("0.3.0"):
+if GYMNASIUM_VERSION <= version.parse("0.30.0"):
     def make_env(env):
         env = gym.wrappers.RecordEpisodeStatistics(env)
         env = gym.wrappers.AutoResetWrapper(env)
@@ -68,17 +68,6 @@ else:
 
 # python train_blenderl.py --env-name riverraid --joint-training --num-steps 16 --num-envs 1 --gamma 0.99
 class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
-    """
-    Vectorized NUDGE environment for River Raid.
-
-    Args:
-        mode (str): Mode of the environment. Possible values are "train" and "eval".
-        n_envs (int): Number of environments.
-        render_mode (str): Mode of rendering. Possible values are "rgb_array" and "human".
-        render_oc_overlay (bool): Whether to render the overlay of OC.
-        seed (int): Seed for the environment.
-    """
-
     name = "riverraid"
     pred2action = {
         "noop": 0,
