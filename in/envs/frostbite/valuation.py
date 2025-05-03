@@ -2,11 +2,6 @@ import torch as th
 
 from nsfr.utils.common import bool_to_probs
 
-def low_temperature(temperature: th.Tensor) -> th.Tensor:
-    """True iff temperature is below 15/45."""
-    result = temperature[..., 1] < 15
-    return bool_to_probs(result)
-
 def enemy_left(player: th.Tensor, enemy: th.Tensor) -> th.Tensor:
     """Goes towards 1 if the player is left of the enemy and the enemy is close."""
     player_x = player[..., 1]
@@ -63,25 +58,6 @@ def no_enemy_below(player: th.Tensor, enemy: th.Tensor) -> th.Tensor:
     y_distance = enemy_y - player_y
     return bool_to_probs((y_distance > 0) & (y_distance <= 40) & (abs(player_x - enemy_x) < 20))
 
-def fish_above(player: th.Tensor, block: th.Tensor) -> th.Tensor:
-    """True iff there is a fish right above the player"""
-    player_x = player[..., 1]
-    player_y = player[..., 2]
-    block_x = block[..., 1]
-    block_y = block[..., 2]
-    y_distance = player_y - block_y
-    return bool_to_probs((y_distance > 0) & (y_distance <= 30) & (abs(player_x - block_x) < 20))
-
-def fish_below(player: th.Tensor, block: th.Tensor) -> th.Tensor:
-    """True iff there is a fish right below the player"""
-    player_x = player[..., 1]
-    player_y = player[..., 2]
-    fish_x = block[..., 1]
-    fish_y = block[..., 2]
-    y_distance = fish_y - player_y
-    return bool_to_probs((y_distance > 0) & (y_distance <= 30) & (abs(player_x - fish_x) < 20))
-
-
 def left_of_door(player: th.Tensor, door: th.Tensor) -> th.Tensor:
     """True iff the player is 'left of' the door."""
     player_x = player[..., 1]
@@ -133,20 +109,6 @@ def no_block_below(player: th.Tensor, block: th.Tensor) -> th.Tensor:
     block_is_below = block_below(player, block)
     result = th.ones_like(block_is_below) - block_is_below
     return result
-
-def white_block_above(player: th.Tensor, block: th.Tensor) -> th.Tensor:
-    """True iff there is a white block somewhere above the player"""
-    player_y = player[..., 2]
-    block_y = block[..., 2]
-    block_is_white = block[...,3] == 214
-    return bool_to_probs((player_y > block_y) & (block_is_white))
-
-def white_block_below(player: th.Tensor, block: th.Tensor) -> th.Tensor:
-    """True iff there is a white block somewhere below the player"""
-    player_y = player[..., 2]
-    block_y = block[..., 2]
-    block_is_white = block[...,3] == 214
-    return bool_to_probs((player_y < block_y) & (block_is_white))
 
 def far_right(player:th.Tensor) -> th.Tensor:
     player_x = player[..., 1]

@@ -50,7 +50,7 @@ class NudgeEnv(NudgeBaseEnv):
         # self.env = OCAtari(env_name="Seaquest-v4", mode="ram", obs_mode="ori",
         #                    render_mode=render_mode, render_oc_overlay=render_oc_overlay)
         self.env = HackAtari(
-                env_name="ALE/Frostbite-v5",
+                env_name="ALE/Frostbite",
                 mode="ram",
                 obs_mode="ori",
                 modifs=[("ui_color_red"), ("reposition_floes_medium"), ("no_birds"), ("many_enemies")],

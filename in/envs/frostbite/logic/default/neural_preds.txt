@@ -1,7 +1,5 @@
 no_enemy_below:2:oplayer,oenemy
 no_enemy_above:2:oplayer,oenemy
-fish_below:2:oplayer,ogreenfish
-fish_above:2:oplayer,ogreenfish
 enemy_left:2:oplayer,oenemy
 enemy_right:2:oplayer,oenemy
 no_enemy_left:2:oplayer,oenemy
@@ -11,8 +9,6 @@ far_right:1:oplayer
 low_temperature:1:otemperature
 no_block_above:2:oplayer,ofloatingblock
 no_block_below:2:oplayer,ofloatingblock
-white_block_above:2:oplayer,ofloatingblock
-white_block_below:2:oplayer,ofloatingblock
 block_above:2:oplayer,ofloatingblock
 block_below:2:oplayer,ofloatingblock
 left_of_door:2:oplayer,odoor

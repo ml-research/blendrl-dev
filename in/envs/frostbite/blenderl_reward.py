@@ -7,6 +7,8 @@ def reward_function(self) -> float:
             player = obj
         if 'door' in str(obj).lower():
             door_exists = True
+        else:
+            door_exists = False
 
     reward = 0.0
 
@@ -14,6 +16,7 @@ def reward_function(self) -> float:
     reward += 0.05
 
     #door_exists
-    reward += 0.5
+    if door_exists:
+        reward += 0.5
     
     return reward
