@@ -4,6 +4,11 @@ This module is a fork of [https://github.com/Felix-Petersen/difflogic](https://g
 For the installation of `difflogic` to succeed, the [`setup.py`](setup.py) script has been modified 
 such that the CUDA code is compiled only for NVIDIA Compute Capability versions 6 and above.
 
+Furthermore, the flag `--no-cuda` can be specified to install the library on systems that do not support CUDA:
+```bash
+python setup.py install --no-cuda
+```
+
 Original README below.
 
 ---
