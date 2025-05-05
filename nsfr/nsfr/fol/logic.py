@@ -1,10 +1,41 @@
 from abc import ABC, abstractmethod
 
-import itertools
+from typing import List, Optional
 
 
 def flatten(x): return [z for y in x for z in (
     flatten(y) if hasattr(y, '__iter__') and not isinstance(y, str) else (y,))]
+
+
+class DataType(object):
+    """Data type in first-order logic.
+
+    A class of data types in first-order logic.
+
+    Args:
+        name (str): The name of the data type.
+        num_features (int): The number of features that represent the data type.
+
+    Attrs:
+        name (str): The name of the data type.
+        num_features (int): The number of features that represent the data type.
+    """
+
+    def __init__(self, name: str, num_features: Optional[int]=None):
+        self.name = name
+        self.num_features = num_features
+
+    def __eq__(self, other):
+        return self.name == other.name
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __hash__(self):
+        return hash(self.__str__())
 
 
 class Term(ABC):
@@ -378,7 +409,7 @@ class Predicate():
         dtypes (List[DataTypes]): The data types of the arguments for the predicate.
     """
 
-    def __init__(self, name, arity, dtypes):
+    def __init__(self, name: str, arity: int, dtypes: List[DataType]):
         self.name = name
         self.arity = arity
         self.dtypes = dtypes  # mode = List[dtype]

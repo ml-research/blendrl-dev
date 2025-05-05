@@ -1,4 +1,3 @@
-import os
 import pickle
 import random
 from pathlib import Path
@@ -14,11 +13,12 @@ from nudge.torch_utils import softor
 
 
 class NsfrActorCritic(nn.Module):
-    def __init__(self, env: NudgeBaseEnv, rules: str, device, rng=None):
+    def __init__(self, env: NudgeBaseEnv, rules: str, device, rng=None, valuation_model=None):
         super(NsfrActorCritic, self).__init__()
         self.device =device
         self.rng = random.Random() if rng is None else rng
         self.env = env
+        self.valuation_model = valuation_model
         self.actor = get_nsfr_model(env.name, rules, device=device, train=True)
         self.prednames = self.get_prednames()
 

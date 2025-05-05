@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 
 import torch
 import numpy as np
@@ -85,12 +86,15 @@ def extract_for_cgen_explaining(coin_jump):
     return torch.tensor(extracted_states, device="cuda:0")
 
 
-def load_module(path: str):
-    module_name = path.replace(os.path.sep, ".")
-    if module_name.endswith(".py"):
-        module_name = module_name[:-3]
+def load_module(path: str, _module_name: Optional[str] = None):
+    if _module_name is None:
+        module_name = path.replace(os.path.sep, ".")
+        if module_name.endswith(".py"):
+            module_name = module_name[:-3]
+    else:
+        module_name = _module_name
 
-    # Check if module has already been loaded
+    # check if module has already been loaded
     if module_name in sys.modules:
         return sys.modules[module_name]
 

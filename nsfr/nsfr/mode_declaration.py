@@ -1,4 +1,4 @@
-from .fol.language import DataType
+from .fol.logic import DataType
 
 
 class ModeDeclaration(object):

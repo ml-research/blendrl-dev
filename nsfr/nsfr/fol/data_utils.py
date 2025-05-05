@@ -2,8 +2,8 @@ import os.path
 
 from lark import Lark
 from .exp_parser import ExpTree
-from .language import Language, DataType
-from .logic import Predicate, NeuralPredicate, FuncSymbol, Const
+from .language import Language
+from .logic import Predicate, NeuralPredicate, FuncSymbol, Const, DataType
 
 
 class DataUtils(object):
@@ -86,7 +86,7 @@ class DataUtils(object):
         return Predicate(pred, int(arity), dtypes)
 
     def parse_neural_pred(self, line):
-        """Parse string to predicates.
+        """Parse string to neural predicates.
         """
         line = line.replace('\n', '')
         pred, arity, dtype_names_str = line.split(':')
@@ -106,10 +106,16 @@ class DataUtils(object):
         return funcs
 
     def parse_const(self, line):
-        """Parse string to function symbols.
+        """Parse string to constants.
         """
-        dtype_name, const_names_str = line.split(':')
-        dtype = DataType(dtype_name)
+        tokens = line.split(':')
+        if len(tokens) == 3:
+            dtype_name, dtype_num_features, const_names_str = tokens
+            dtype_num_features = int(dtype_num_features)
+        else:
+            dtype_name, const_names_str = tokens
+            dtype_num_features = None
+        dtype = DataType(dtype_name, dtype_num_features)
         const_names = const_names_str.split(',')
         return [Const(const_name, dtype) for const_name in const_names]
 
@@ -132,5 +138,13 @@ class DataUtils(object):
         preds = self.load_preds(self.base_path + 'preds.txt') + \
                 self.load_neural_preds(self.base_path + 'neural_preds.txt')
         consts = self.load_consts(self.base_path + 'consts.txt')
+
+        # set dtypes
+        for pred in preds:
+            for i, dtype in enumerate(pred.dtypes):
+                for const in consts:
+                    if const.dtype.name == dtype.name:
+                        pred.dtypes[i] = const.dtype
+
         lang = Language(preds, [], consts)
         return lang

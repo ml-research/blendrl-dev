@@ -1,36 +1,21 @@
-import random
 import pickle
+import random
 from pathlib import Path
-import os
-
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from nudge.agents.logic_agent import NsfrActorCritic
-from nudge.agents.neural_agent import NeuralPPO, ActorCritic
-from nudge.torch_utils import softor
-
-# from nudge.env import NudgeBaseEnv
-from torch.distributions.categorical import Categorical
-
-
-from torch.distributions import Categorical
-from nsfr.utils.common import load_module
-from nsfr.common import get_nsfr_model
-
-from utils import get_blender, load_cleanrl_agent
-from nudge.utils import print_program
-
 from captum.attr import (
-    GradientShap,
-    DeepLift,
-    DeepLiftShap,
     IntegratedGradients,
-    LayerConductance,
-    NeuronConductance,
-    NoiseTunnel,
 )
+from torch.distributions import Categorical
+
+from nsfr.common import get_nsfr_model
+from nsfr.utils.common import load_module
+from nudge.torch_utils import softor
+from nudge.utils import print_program
+from utils import get_blender, load_cleanrl_agent
+
 
 
 class BlenderActor(nn.Module):
@@ -390,6 +375,7 @@ class BlenderActorCritic(nn.Module):
         blend_function: blending function, one of ["softmax", "gumbel_softmax"]
         device: device
         rng: random number generator
+        valuation_model: valuation model
     """
 
     def __init__(
@@ -403,6 +389,7 @@ class BlenderActorCritic(nn.Module):
         device,
         rng=None,
         explain=False,
+        valuation_model=None,
     ):
         super(BlenderActorCritic, self).__init__()
         self.device = device
@@ -416,6 +403,7 @@ class BlenderActorCritic(nn.Module):
         mlp_module_path = f"in/envs/{self.env.name}/mlp.py"
         module = load_module(mlp_module_path)
         self.visual_neural_actor = load_cleanrl_agent(pretrained=False, device=device)
+        self.valuation_model = valuation_model
         if reasoner == "neumann":
             from neumann.common import get_neumann_model
             self.logic_actor = get_neumann_model(
@@ -428,10 +416,16 @@ class BlenderActorCritic(nn.Module):
                 blender_mode=blender_mode,
                 train=True,
                 explain=explain,
+                valuation_model=self.valuation_model,
             )
         elif reasoner == "nsfr":
             self.logic_actor = get_nsfr_model(
-                env.name, rules, device=device, train=True, explain=explain
+                env.name,
+                rules,
+                device=device,
+                train=True,
+                explain=explain,
+                valuation_model=self.valuation_model,
             )
             self.blender = get_blender(
                 env,
@@ -440,6 +434,7 @@ class BlenderActorCritic(nn.Module):
                 blender_mode=blender_mode,
                 train=True,
                 explain=explain,
+                valuation_model=self.valuation_model,
             )
         # self.logic_actor = get_nsfr_model(env.name, rules, device=device, train=True)
         self.logic_critic = module.MLP(device=device, out_size=1, logic=True)
@@ -543,7 +538,7 @@ class BlenderActorCritic(nn.Module):
         """
         return self.actor.get_prednames()
 
-    def get_action_and_value(self, neural_state, logic_state, action=None):
+    def get_action_and_value(self, neural_state, logic_state, action=None, return_blending_weights=False):
         """
         Compute an action and value.
         Args:
@@ -575,7 +570,11 @@ class BlenderActorCritic(nn.Module):
             + blending_weights[:, 1] * logic_value.squeeze(1)
         ).unsqueeze(1)
 
-        return action, logprob, dist.entropy(), blend_dist.entropy(), blended_value
+        return_values = (action, logprob, dist.entropy(), blend_dist.entropy(), blended_value)
+        if not return_blending_weights:
+            return return_values
+        else:
+            return (*return_values, blending_weights)
 
     def get_neural_value(self, neural_state):
         """

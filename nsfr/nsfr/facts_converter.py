@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 class FactsConverter(nn.Module):
     """
-    FactsConverter converts the output fromt the perception module to the valuation vector.
+    FactsConverter converts the output from the perception module to the valuation vector.
     """
 
     def __init__(self, lang, valuation_module, device=None):

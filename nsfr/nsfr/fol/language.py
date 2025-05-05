@@ -1,5 +1,6 @@
-from .logic import Var
-import itertools
+from typing import List
+
+from nsfr.fol.logic import Predicate, FuncSymbol, Const
 
 
 class Language(object):
@@ -18,7 +19,7 @@ class Language(object):
         consts (List[Const]): A set of constants.
     """
 
-    def __init__(self, preds, funcs, consts):
+    def __init__(self, preds: List[Predicate], funcs: List[FuncSymbol], consts: List[Const]):
         self.preds = preds
         self.funcs = funcs
         self.consts = consts
@@ -61,7 +62,7 @@ class Language(object):
         """Get constants that match given dtypes.
 
         Args:
-            dtype (DataType): The data type.
+            dtype (nsfr.fol.logic.DataType): The data type.
 
         Returns:
             List of constants whose data type is the given data type.
@@ -117,31 +118,3 @@ class Language(object):
         pred = [pred for pred in self.preds if pred.name == pred_name]
         assert len(pred) == 1, 'Too many or less match in ' + pred_name
         return pred[0]
-
-
-class DataType(object):
-    """Data type in first-order logic.
-
-    A class of data types in first-order logic.
-
-    Args:
-        name (str): The name of the data type.
-
-    Attrs:
-        name (str): The name of the data type.
-    """
-
-    def __init__(self, name):
-        self.name = name
-
-    def __eq__(self, other):
-        return self.name == other.name
-
-    def __str__(self):
-        return self.name
-
-    def __repr__(self):
-        return self.__str__()
-
-    def __hash__(self):
-        return hash(self.__str__())

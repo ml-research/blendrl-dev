@@ -1,30 +1,15 @@
-from typing import Sequence, Dict, Any, Union
-from abc import ABC
 import inspect
 import re
+from abc import ABC
+from typing import Dict, Union, Callable
+from functools import partial
 
 import torch
 from torch import nn
+
 from nsfr.fol.language import Language
 from nsfr.fol.logic import Atom, Const
 from nsfr.utils.common import load_module
-
-
-class ValuationFunction(nn.Module, ABC):
-    """Base class for valuation functions used inside valuation modules."""
-
-    def __init__(self, pred_name: str):
-        super().__init__()
-        self.pred_name = pred_name
-
-    def forward(self, **kwargs) -> torch.Tensor:
-        raise NotImplementedError()
-
-    def bool2probs(self, bool_tensor: torch.Tensor) -> torch.Tensor:
-        """Converts a Boolean tensor into a probability tensor by assigning
-        probability 0.99 for True
-        probability 0.01 for False."""
-        return torch.where(bool_tensor, 0.99, 0.01)
 
 
 class ValuationModule(nn.Module, ABC):
@@ -32,21 +17,26 @@ class ValuationModule(nn.Module, ABC):
     the environment-specific valuation functions.
 
     Args:
-        val_fn_path: The path to the file containing the user-specified valuation functions.
+        valuation_model: Either (a) the valuation model or (b) the path to the file containing the user-specified
+            valuation functions.
     """
 
     lang: Language
     device: Union[torch.device, str]
-    val_fns: Dict[str, ValuationFunction]  # predicate names to corresponding valuation fn
+    val_fns: Dict[str, Callable]  # predicate names to corresponding valuation fn
 
-    def __init__(self, val_fn_path: str, lang: Language, device: Union[torch.device, str],
+    def __init__(self, valuation_model: Union[nn.Module, str], lang: Language, device: Union[torch.device, str],
                  pretrained: bool = True):
         super().__init__()
 
         # Parse all valuation functions
-        val_fn_module = load_module(val_fn_path)
-        all_functions = inspect.getmembers(val_fn_module, inspect.isfunction)
-        self.val_fns = {fn[0]: fn[1] for fn in all_functions}
+        pred_names = set([pred.name for pred in lang.preds])
+        if type(valuation_model) == str: # for backward compatibility
+            val_fn_module = load_module(valuation_model)
+            all_functions = inspect.getmembers(val_fn_module, inspect.isfunction)
+            self.val_fns = {fn[0]: fn[1] for fn in all_functions if fn[0] in pred_names}
+        else:
+            self.val_fns = {pred_name: partial(valuation_model.forward, pred_name) for pred_name in pred_names}
 
         self.lang = lang
         self.device = device

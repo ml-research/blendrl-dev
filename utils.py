@@ -1,15 +1,21 @@
-from collections import OrderedDict
+from __future__ import annotations
 
-import torch
+import inspect
+import os
+import pkgutil
+import re
+from collections import OrderedDict
+from dataclasses import dataclass
+from pathlib import Path
+from typing import List, Optional, TypeVar, Any, Dict, Type
+
 import gymnasium as gym
-from nsfr.common import get_nsfr_model, get_blender_nsfr_model
-from nsfr.utils.common import load_module
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.distributions.categorical import Categorical
-import numpy as np
 
-from stable_baselines3 import PPO
+
 # from huggingface_sb3 import load_from_hub, push_to_hub
 
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
@@ -82,7 +88,7 @@ class CNNActor(nn.Module):
         probs = Categorical(logits=logits)
         return probs.probs
 
-def get_blender(env, blender_rules, device, train=True, blender_mode='logic', reasoner='nsfr', explain=False):
+def get_blender(env, blender_rules, device, train=True, blender_mode='logic', reasoner='nsfr', explain=False, valuation_model=None):
     """
     Load a Blender model. 
     Args:
@@ -99,7 +105,8 @@ def get_blender(env, blender_rules, device, train=True, blender_mode='logic', re
     assert blender_mode in ['logic', 'neural']
     if blender_mode == 'logic':
         if reasoner == 'nsfr':
-            return get_blender_nsfr_model(env.name, blender_rules, device, train=train, explain=explain)
+            from nsfr.common import get_blender_nsfr_model
+            return get_blender_nsfr_model(env.name, blender_rules, device, train=train, explain=explain, valuation_model=valuation_model)
         elif reasoner == 'neumann':
             from neumann.common import get_neumann_model, get_blender_neumann_model
             return get_blender_neumann_model(env.name, blender_rules, device, train=train, explain=explain)
@@ -145,3 +152,76 @@ def load_logic_ppo(agent, path):
     agent.logic_actor.load_state_dict(new_actor_dic)
     agent.logic_critic.load_state_dict(new_critic_dic)
     return agent
+
+
+@dataclass
+class Checkpoint:
+    step: int
+    path: Path
+
+
+def get_all_checkpoints(checkpoints_dir: Path, sorted: bool = True) -> List[Checkpoint]:
+    checkpoint_filenames = os.listdir(checkpoints_dir)
+    result = []
+    pattern = re.compile("[0-9]+")
+    for i, checkpoint_filename in enumerate(checkpoint_filenames):
+        match = pattern.search(checkpoint_filename)
+        if match is not None:
+            step = int(match.group())
+            path = checkpoints_dir / checkpoint_filename
+            checkpoint = Checkpoint(step, path)
+            result.append(checkpoint)
+
+    if sorted:
+        result.sort(key=lambda checkpoint: checkpoint.step)
+
+    return result
+
+
+def get_latest_checkpoint(checkpoints_dir: Path) -> Optional[Checkpoint]:
+    checkpoints = get_all_checkpoints(checkpoints_dir, sorted=True)
+
+    if len(checkpoints) > 0:
+        return checkpoints[-1]
+
+    return None
+
+
+def load_module(*args, **kwargs):
+    from nsfr.utils.common import load_module
+    return load_module(*args, **kwargs)
+
+T = TypeVar('T')
+def optional(val: Optional[T], default: T) -> T:
+    if val is None:
+        return default
+
+    return val
+
+
+def load_classes_in_package(package: str, subclass: Optional[Type[T]]) -> List[Type[T]]:
+    classes = []
+
+    # import each submodule
+    for module in pkgutil.walk_packages([package]):
+        submodule = load_module(f"{package}/{module.name}.py")
+
+        for _, obj in inspect.getmembers(submodule, inspect.isclass):
+            if (
+                    (
+                        subclass is None
+                        or (
+                            issubclass(obj, subclass)
+                            and obj is not subclass
+                        )
+                    )
+                    and obj.__module__ == submodule.__name__
+            ):
+                classes.append(obj)
+
+    return classes
+
+def load_model_state(checkpoint_path: Path, model: any, strict: bool = False):
+    with open(checkpoint_path, "rb") as f:
+        device = torch.device('cpu')
+        model.load_state_dict(state_dict=torch.load(f, map_location=device, weights_only=True), strict=strict)

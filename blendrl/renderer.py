@@ -1,17 +1,15 @@
 from datetime import datetime
 from typing import Union
 
-from networkx import minimum_cut_value
-
 import numpy as np
-import torch as th
 import pygame
-import vidmaker
+import torch as th
+from matplotlib.cm import get_cmap
 
 from nudge.agents.logic_agent import NsfrActorCritic
 from nudge.agents.neural_agent import ActorCritic
-from nudge.utils import load_model, yellow
 from nudge.env import NudgeBaseEnv
+from nudge.utils import load_model, yellow
 
 SCREENSHOTS_BASE_PATH = "out/screenshots/"
 PREDICATE_PROBS_COL_WIDTH = 500 * 2
@@ -37,15 +35,18 @@ class Renderer:
         env_kwargs: dict = None,
         render_predicate_probs=True,
         seed=0,
+        predicate_name=None,
+        valuation_model=None,
     ):
 
         self.fps = fps
         self.deterministic = deterministic
         self.render_predicate_probs = render_predicate_probs
+        self.predicate_name = predicate_name
 
         # Load model and environment
         self.model = load_model(
-            agent_path, env_kwargs_override=env_kwargs, device=device
+            agent_path, env_kwargs_override=env_kwargs, device=device, valuation_model=valuation_model
         )
         self.env = NudgeBaseEnv.from_name(
             env_name, mode="deictic", seed=seed, **env_kwargs
@@ -128,7 +129,7 @@ class Renderer:
                 )
                 new_obs_nn = th.tensor(new_obs_nn, device=self.model.device)
 
-                self._render()
+                self._render(new_obs)
 
                 if self.takeover and float(reward) != 0:
                     print(f"Reward {reward:.2f}")
@@ -136,7 +137,7 @@ class Renderer:
                 if self.reset:
                     done = True
                     new_obs = self.env.reset()
-                    self._render()
+                    self._render(new_obs)
 
                 obs = new_obs
                 obs_nn = new_obs_nn
@@ -205,12 +206,14 @@ class Renderer:
                 # elif event.key == pygame.K_f:  # 'F': fast forward
                 #     self.fast_forward = False
 
-    def _render(self):
+    def _render(self, logic_obs):
         self.window.fill((20, 20, 20))  # clear the entire window
         self._render_policy_probs()
         self._render_predicate_probs()
         self._render_neural_probs()
         self._render_env()
+        if self.predicate_name is not None:
+            self._render_facts_heatmap(self.predicate_name, logic_obs)
 
         pygame.display.flip()
         pygame.event.pump()
@@ -401,3 +404,68 @@ class Renderer:
             text_rect = text.get_rect()
             text_rect.topleft = (self.env_render_shape[0] + 10, 25 + i * 35)
             self.window.blit(text, text_rect)
+
+    def _render_facts_heatmap(self, predname: str, logic_obs):
+        nsfr = self.model.actor.logic_actor
+
+        # get indices of all atoms belonging to the given predicate
+        atom_indices = []
+        for i, atom in enumerate(nsfr.atoms):
+            if atom.pred.name == predname:
+                atom_indices.append(i)
+
+        observation_size = self.env.env.image_size
+        cell_size = (10, 10)
+        grid_size = (observation_size[0] // cell_size[0], observation_size[1] // cell_size[1])
+        num_cells = grid_size[0] * grid_size[1]
+        fact_vals = np.zeros(grid_size).T
+
+        player = self.env.env.objects[0]
+        player_size = player.wh
+
+        new_logic_obs = logic_obs.clone().repeat(num_cells, 1, 1)
+
+        idx = 0
+        for c_x in range(grid_size[0]):
+            for c_y in range(grid_size[1]):
+                # set player position to center of cell
+                player_center = (c_x * (cell_size[0] + 0.5), c_y * (cell_size[1] + 0.5))
+                player_xy = (player_center[0] - (player_size[0] // 2), player_center[1] - (player_size[1] // 2))
+                new_logic_obs[idx, 0, 1:3] = th.tensor(player_xy, dtype=int)
+
+                idx += 1
+
+        with th.no_grad():
+            # forward reasoning
+            nsfr(new_logic_obs)
+
+            idx = 0
+            for c_x in range(grid_size[0]):
+                for c_y in range(grid_size[1]):
+                    v_T = nsfr.V_T[idx]
+
+                    # calculate max atom value for current cell
+                    for atom_idx in atom_indices:
+                        val = v_T[atom_idx]
+                        fact_vals[c_y, c_x] = max(fact_vals[c_y, c_x], val)
+
+                    idx += 1
+
+        # create heatmap plot
+        cmap = get_cmap('Greens')
+        heatmap_rgba = cmap(fact_vals)
+        heatmap_rgba[..., 3] = np.minimum(1.0, fact_vals * 0.8)
+        heatmap_rgba = (heatmap_rgba * 255).astype(np.uint8)
+        scale_by = tuple(
+            (self.env.env.window_size[i] / observation_size[i]) * cell_size[i]
+            for i in range(2)
+        )
+
+        # create pygame surface
+        heatmap_surface = pygame.image.frombuffer(
+            heatmap_rgba.tobytes(),
+            grid_size,
+            "RGBA"
+        ).convert_alpha()
+        heatmap_surface = pygame.transform.scale_by(heatmap_surface, scale_by)
+        self.window.blit(heatmap_surface, (0, 0))

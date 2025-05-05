@@ -12,7 +12,6 @@ class NSFReasoner(nn.Module):
         facts_converter (nn.Module): The facts converter module.
         infer_module (nn.Module): The differentiable forward-chaining inference module.
         atoms (list(atom)): The set of ground atoms (facts).
-        predicate_model (nn.Module): The MLP-based predicate model.
     """
 
     def __init__(self, facts_converter, infer_module, atoms, bk, clauses, device, train=False, explain=False):
@@ -28,7 +27,6 @@ class NSFReasoner(nn.Module):
         self.prednames = self.get_prednames()
         self.V_0 = []
         self.V_T = []
-        # self.predicate_model = predicate_model  # Register the predicate model
 
     def get_params(self):
         # Include predicate model parameters along with infer_module parameters

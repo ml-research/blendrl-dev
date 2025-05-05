@@ -1,21 +1,22 @@
 import math
+import os
 import random
+import re
+from functools import reduce
+from pathlib import Path
+
 import numpy as np
 import torch
 import yaml
-from pathlib import Path
-import os
-import re
 
+from blendrl.env_vectorized import VectorizedNudgeBaseEnv
+from nsfr.nsfr import NSFReasoner
+from nsfr.utils.torch import softor
+from nudge.env import NudgeBaseEnv
 from .agents.logic_agent import NsfrActorCritic
 from .agents.neural_agent import ActorCritic
-from nudge.env import NudgeBaseEnv
-from blendrl.env_vectorized import VectorizedNudgeBaseEnv
-from functools import reduce
-from nsfr.utils.torch import softor
 
-from nsfr.nsfr import NSFReasoner
- 
+
 def to_proportion(dic):
     # Using reduce to get the sum of all values in the dictionary
     temp = reduce(lambda x, y: x + y, dic.values())
@@ -79,7 +80,9 @@ def load_model(model_dir,
                env_kwargs_override: dict = None,
                steps = None,
                device=torch.device('cuda:0'),
-               explain=False):
+               explain=False,
+               valuation_model=None
+               ):
     from blendrl.agents.blender_agent import BlenderActorCritic
     # Determine all relevant paths
     model_dir = Path(model_dir)
@@ -114,18 +117,21 @@ def load_model(model_dir,
     if algorithm == 'ppo':
         model = ActorCritic(env).to(device)
     elif algorithm == 'logic':
-        model = NsfrActorCritic(env, device=device, rules=rules).to(device)
+        model = NsfrActorCritic(env, device=device, rules=rules, valuation_model=valuation_model).to(device)
     else:
         try:
             reasoner = config["reasoner"]
         except KeyError:
             reasoner = "nsfr"
-        model = BlenderActorCritic(env, rules=rules, actor_mode=config["actor_mode"], blender_mode=config["blender_mode"], \
-            blend_function=config["blend_function"], reasoner=reasoner, device=device, explain=explain).to(device)
+        model = BlenderActorCritic(
+            env, rules=rules, actor_mode=config["actor_mode"], blender_mode=config["blender_mode"],
+            blend_function=config["blend_function"], reasoner=reasoner, device=device, explain=explain,
+            valuation_model=valuation_model
+        ).to(device)
 
     # Load the model weights
     with open(checkpoint_path, "rb") as f:
-        model.load_state_dict(state_dict=torch.load(f, map_location=torch.device('cpu'), weights_only=True))
+        model.load_state_dict(state_dict=torch.load(f, map_location=torch.device('cpu'), weights_only=True), strict=False)
     # model.logic_actor.im.W = torch.nn.Parameter(model.logic_actor.im.init_identity_weights(device))
     # print(model.logic_actor.im.W)
 
@@ -168,7 +174,9 @@ def load_model_train(model_dir,
     elif algorithm == 'logic':
         model = NsfrActorCritic(env, device=device, rules=rules).to(device)
     else:
-        model = BlenderActorCritic(env, rules=rules, actor_mode=config["actor_mode"], blender_mode=config["blender_mode"], blend_function=config["blend_function"], device=device).to(device)
+        model = BlenderActorCritic(env, rules=rules, actor_mode=config["actor_mode"],
+                                   blender_mode=config["blender_mode"], blend_function=config["blend_function"],
+                                   device=device).to(device)
 
     # Load the model weights
     with open(checkpoint_path, "rb") as f:
@@ -215,7 +223,6 @@ def print_program(agent, mode="softor"):
         print_program_nsfr(actor, mode) 
     else:
         # the neumann reasoner
-        from neumann.neumann import NEUMANN
         print_program_neumann(actor, mode)
         
 def print_program_nsfr(actor, mode):
