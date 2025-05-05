@@ -6,6 +6,13 @@ wandb/
 # Checkpoints
 out_val/
 models/
+!valuation/models/
+
+# Plots
+plots/
+
+# Local scripts
+scripts/.*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
