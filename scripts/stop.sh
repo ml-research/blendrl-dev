@@ -1,6 +1,6 @@
 #!/bin/bash
 
-NUM_SEEDS=$2
+NUM_SEEDS=${2:-3}
 
 # Stop and remove container if still running
 for ((SEED=0; SEED<NUM_SEEDS; SEED++)); do
