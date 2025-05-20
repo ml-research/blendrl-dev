@@ -1,0 +1,6 @@
+on_ladder:2:oplayer,oladder
+right_of_ladder:2:oplayer,oladder
+left_of_ladder:2:oplayer,oladder
+close_by_monkey:2:oplayer,omonkey
+close_by_throwncoconut:2:oplayer,othrowncoconut
+nothing_around:1:image

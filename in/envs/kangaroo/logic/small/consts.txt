@@ -1,0 +1,5 @@
+oplayer:4:obj1
+omonkey:4:obj3,obj4,obj5,obj6
+othrowncoconut:4:obj8,obj9,obj10
+oladder:4:obj15,obj16,obj17,obj18,obj19,obj20
+image:196:img

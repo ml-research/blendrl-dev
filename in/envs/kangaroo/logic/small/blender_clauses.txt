@@ -1,0 +1,3 @@
+neural_agent(X):-close_by_monkey(P,M).
+neural_agent(X):-close_by_throwncoconut(P,TC).
+logic_agent(X):-nothing_around(X).
