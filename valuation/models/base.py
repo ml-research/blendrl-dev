@@ -1,12 +1,11 @@
 from abc import ABC, abstractmethod
 from typing import ClassVar, Optional, Union, List
 
+import torch as th
 from dataclasses import dataclass, field
 
-import torch as th
-from hackatari import HackAtari
-
 from nsfr.fol.language import Language
+from utils import optional, get_default_device
 
 
 @dataclass
@@ -22,14 +21,13 @@ class BaseValuationModel(th.nn.Module, ABC):
                  device: Optional[Union[th.device, str]]):
         super().__init__()
 
-        self.env_name: str
+        self.env_name = env_name
         self.lang = lang
         self.config = config
-        self.device = device
+        self.device = optional(device, get_default_device())
 
-        if len(self.config.static_predicates) > 0:
-            from valuation.utils import get_default_valuation_model
-            self.static_model = get_default_valuation_model(env_name, self.device)
+        from valuation.utils import get_default_valuation_model
+        self.static_model = get_default_valuation_model(env_name, self.device)
 
     def forward(self, predicate_name: str, *inputs) -> th.Tensor:
         if predicate_name in self.config.static_predicates:

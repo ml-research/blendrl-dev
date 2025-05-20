@@ -538,7 +538,7 @@ class BlenderActorCritic(nn.Module):
         """
         return self.actor.get_prednames()
 
-    def get_action_and_value(self, neural_state, logic_state, action=None, return_blending_weights=False):
+    def get_action_and_value(self, neural_state, logic_state, action=None, return_blending_weights=False, return_action_probs=False):
         """
         Compute an action and value.
         Args:
@@ -571,10 +571,13 @@ class BlenderActorCritic(nn.Module):
         ).unsqueeze(1)
 
         return_values = (action, logprob, dist.entropy(), blend_dist.entropy(), blended_value)
-        if not return_blending_weights:
-            return return_values
-        else:
-            return (*return_values, blending_weights)
+        if return_blending_weights:
+            return_values = (*return_values, blending_weights)
+
+        if return_action_probs:
+            return_values = (*return_values, action_probs)
+
+        return return_values
 
     def get_neural_value(self, neural_state):
         """

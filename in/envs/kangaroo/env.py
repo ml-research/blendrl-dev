@@ -1,20 +1,13 @@
-from typing import Sequence
+from typing import Sequence, Optional, List
+
 import torch
-from nudge.env import NudgeBaseEnv
-from ocatari.core import OCAtari
-from hackatari.core import HackAtari
-from blendrl.env_utils import make_env
-import numpy as np
 import torch as th
+from hackatari.core import HackAtari
 from ocatari.ram.kangaroo import MAX_ESSENTIAL_OBJECTS
-import gymnasium
-import gymnasium as gym
-from stable_baselines3.common.env_util import make_atari_env
-from stable_baselines3.common.vec_env import VecFrameStack
 
-from utils import load_cleanrl_envs
-
-from blendrl.env_utils import kangaroo_modifs
+from blendrl.env_utils import make_env
+from nudge.env import NudgeBaseEnv
+from utils import optional, DEFAULT_MODIFICATIONS
 
 
 class NudgeEnv(NudgeBaseEnv):
@@ -41,7 +34,15 @@ class NudgeEnv(NudgeBaseEnv):
     pred_names: Sequence
 
     def __init__(
-        self, mode: str, render_mode="rgb_array", render_oc_overlay=False, seed=None
+            self,
+            mode: str,
+            render_mode="rgb_array",
+            render_oc_overlay=False,
+            seed=None,
+            modifications: Optional[List[str]] = None,
+            reward_fn_path: Optional[str] = None,
+            *args,
+            **kwargs
     ):
         """
         Constructor for the VectorizedNudgeEnv class.
@@ -58,10 +59,12 @@ class NudgeEnv(NudgeBaseEnv):
             env_name="ALE/Kangaroo-v5",
             mode="ram",
             obs_mode="ori",
-            modifs=kangaroo_modifs,
-            rewardfunc_path="in/envs/kangaroo/blenderl_reward.py",
+            modifs=optional(modifications, DEFAULT_MODIFICATIONS[NudgeEnv.name]),
+            rewardfunc_path=optional(reward_fn_path, "in/envs/kangaroo/reward/default.py"),
             render_mode=render_mode,
             render_oc_overlay=render_oc_overlay,
+            *args,
+            **kwargs
         )
         # apply wrapper to _env
         self.env._env = make_env(self.env._env)

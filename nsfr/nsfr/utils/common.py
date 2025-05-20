@@ -6,6 +6,9 @@ import numpy as np
 import importlib.util
 import sys
 
+from nsfr.fol.data_utils import DataUtils
+from nsfr.fol.language import Language
+
 
 def explaining_nsfr(NSFR, extracted_states):
     V_T = NSFR(extracted_states)
@@ -109,3 +112,12 @@ def bool_to_probs(bool_tensor: torch.Tensor):
     """Converts the values of a tensor from Boolean to probability values by
      slightly 'smoothing' them (1 to 0.99 and 0 to 0.01)."""
     return torch.where(bool_tensor, 0.99, 0.01)
+
+
+def get_language(env_name: str, dataset: str = "default") -> Language:
+    du = DataUtils(
+        lark_path="nsfr/nsfr/lark/exp.lark",
+        lang_base_path=f"in/envs/{env_name}/logic/",
+        dataset=dataset
+    )
+    return du.load_language()

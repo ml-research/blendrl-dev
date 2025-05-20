@@ -8,8 +8,8 @@ import torch
 import yaml
 from torch import nn as nn
 
-from nsfr.fol.data_utils import DataUtils
 from nsfr.fol.language import Language
+from nsfr.utils.common import get_language
 from utils import load_module, load_classes_in_package, Checkpoint, get_all_checkpoints, get_latest_checkpoint, \
     load_model_state
 from valuation.models.base import BaseValuationModel, BaseValuationModelConfig
@@ -26,6 +26,7 @@ class ValuationExperiment:
         self.plots_dir = self.dir / "plots"
         self.config_path = self.dir / "config.yaml"
         self.logs_path = self.dir / "logs.json"
+        self.sim_path = self.dir / "sim.npz"
 
         self.name = self.dir.name
 
@@ -92,12 +93,7 @@ class ValuationExperiment:
 
     @property
     def language(self) -> Language:
-        du = DataUtils(
-            lark_path="nsfr/nsfr/lark/exp.lark",
-            lang_base_path=f"in/envs/{self.env_name}/logic/",
-            dataset=self.config.get("rules", "default")
-        )
-        return du.load_language()
+        return get_language(self.env_name, self.config.get("rules", "default"))
 
     def get_valuation_model(self, device: torch.device, load_from_latest_checkpoint: bool = True) -> nn.Module:
         model_type = self.valuation_model_type

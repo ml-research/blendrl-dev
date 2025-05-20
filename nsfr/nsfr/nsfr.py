@@ -1,7 +1,11 @@
+from typing import List, Optional
+
 import numpy as np
-import torch.nn as nn
 import torch
-from nsfr.utils.logic import get_index_by_predname
+import torch.nn as nn
+
+from nsfr.fol.logic import Clause, Atom
+from nsfr.utils.logic import get_index_by_predname, LogicState
 
 
 class NSFReasoner(nn.Module):
@@ -14,7 +18,7 @@ class NSFReasoner(nn.Module):
         atoms (list(atom)): The set of ground atoms (facts).
     """
 
-    def __init__(self, facts_converter, infer_module, atoms, bk, clauses, device, train=False, explain=False):
+    def __init__(self, facts_converter, infer_module, atoms: List[Atom], bk, clauses: List[Clause], device, train=False, explain=False):
         super().__init__()
         self.fc = facts_converter
         self.im = infer_module
@@ -162,10 +166,11 @@ class NSFReasoner(nn.Module):
         for atom, p in probs.items():
             print(f"{p:.3f} {atom}")
 
-    def get_probs(self):
+    def get_probs(self, predname: Optional[str] = None, index: int = 0):
         probs = {}
         for i, atom in enumerate(self.atoms):
-            probs[atom] = round(self.V_T[0][i].item(), 3)
+            if predname is None or predname == atom.pred.name:
+                probs[atom] = self.V_T[index][i].item()
         return probs
 
     def get_valuation_text(self, valuation):

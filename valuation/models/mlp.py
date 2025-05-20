@@ -42,15 +42,13 @@ class ValuationModelMLP(BaseValuationModel):
     def __init__(self, env_name: str, lang: Language, config: MLPConfig, device=None):
         super().__init__(env_name, lang, config, device)
 
-        device = optional(device, th.device("cuda" if th.cuda.is_available() else "cpu"))
-
         mlps = dict()
 
         for pred in self.lang.preds:
             if isinstance(pred, NeuralPredicate) and pred.name not in self.config.static_predicates:
                 module_name = pred.name
                 input_size = sum([dtype.num_features for dtype in pred.dtypes])
-                mlp = ValuationMLP(input_size=input_size, hidden_sizes=config.hidden_sizes, output_size=1).to(device)
+                mlp = ValuationMLP(input_size=input_size, hidden_sizes=config.hidden_sizes, output_size=1).to(self.device)
                 mlps[module_name] = mlp
 
         self.heads = th.nn.ModuleDict(mlps)

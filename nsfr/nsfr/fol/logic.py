@@ -102,7 +102,7 @@ class Const(Term):
         dtype (datatype): Data type of the term.
     """
 
-    def __init__(self, name, dtype=None):
+    def __init__(self, name: str, dtype: Optional[DataType] = None):
         self.name = name
         self.dtype = dtype
 
@@ -165,7 +165,7 @@ class Var(Term):
         name (str): Name of the variable.
     """
 
-    def __init__(self, name):
+    def __init__(self, name: str):
         self.name = name
 
     def __repr__(self, level=0):
@@ -232,7 +232,7 @@ class FuncSymbol():
         name (str): Name of the function.
     """
 
-    def __init__(self, name, arity):
+    def __init__(self, name: str, arity: int):
         self.name = name
         self.arity = arity
 
@@ -398,7 +398,7 @@ class FuncTerm(Term):
         return var_list
 
 
-class Predicate():
+class Predicate:
     """Predicats in first-order logic.
 
     A class of predicates in first-order logic.
@@ -445,7 +445,7 @@ class NeuralPredicate(Predicate):
         dtypes (List[DataTypes]): The data types of the arguments for the predicate.
     """
 
-    def __init__(self, name, arity, dtypes):
+    def __init__(self, name: str, arity: int, dtypes: List[DataType]):
         super(NeuralPredicate, self).__init__(name, arity, dtypes)
         self.name = name
         self.arity = arity
@@ -476,7 +476,7 @@ class Atom(object):
         terms (List[Term]): The terms for the atoms.
     """
 
-    def __init__(self, pred, terms):
+    def __init__(self, pred: Predicate, terms: List[Term]):
         assert pred.arity == len(
             terms), 'Invalid arguments for predicate symbol ' + pred.name
         self.pred = pred
@@ -605,7 +605,7 @@ class Clause(object):
         body (List[Atom]): The atoms for the body.
     """
 
-    def __init__(self, head, body):
+    def __init__(self, head: Atom, body: List[Atom]):
         self.head = head
         self.body = sorted(body)
         #self.body = body

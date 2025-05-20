@@ -4,6 +4,7 @@ import random
 import re
 from functools import reduce
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 import torch
@@ -13,6 +14,7 @@ from blendrl.env_vectorized import VectorizedNudgeBaseEnv
 from nsfr.nsfr import NSFReasoner
 from nsfr.utils.torch import softor
 from nudge.env import NudgeBaseEnv
+from utils import optional
 from .agents.logic_agent import NsfrActorCritic
 from .agents.neural_agent import ActorCritic
 
@@ -77,11 +79,12 @@ def simulate_prob(extracted_states, num_of_objs, key_picked):
 
 
 def load_model(model_dir,
-               env_kwargs_override: dict = None,
+               env_kwargs: Optional[dict] = None,
                steps = None,
                device=torch.device('cuda:0'),
                explain=False,
-               valuation_model=None
+               valuation_model=None,
+               config_overrides: Optional[dict] = None
                ):
     from blendrl.agents.blender_agent import BlenderActorCritic
     # Determine all relevant paths
@@ -98,17 +101,14 @@ def load_model(model_dir,
 
     # Load model's configuration
     with open(config_path, "r") as f:
-        config = yaml.load(f, Loader=yaml.Loader)
+        config: dict = yaml.load(f, Loader=yaml.Loader)
+        config.update(optional(config_overrides, {}))
 
     algorithm = config["algorithm"]
     environment = config["env_name"]
-    # env_kwargs = config["env_kwargs"]
-    # env_kwargs.update(env_kwargs_override)
-    # env_kwargs = dict(render_oc_overlay=True)
-    env_kwargs = {}
 
     # Setup the environment
-    env = NudgeBaseEnv.from_name(environment, mode=algorithm, **env_kwargs)
+    env = NudgeBaseEnv.from_name(environment, mode=algorithm, **optional(env_kwargs, {}))
 
     rules = config["rules"]
 
@@ -119,10 +119,7 @@ def load_model(model_dir,
     elif algorithm == 'logic':
         model = NsfrActorCritic(env, device=device, rules=rules, valuation_model=valuation_model).to(device)
     else:
-        try:
-            reasoner = config["reasoner"]
-        except KeyError:
-            reasoner = "nsfr"
+        reasoner = config.get("reasoner", "nsfr")
         model = BlenderActorCritic(
             env, rules=rules, actor_mode=config["actor_mode"], blender_mode=config["blender_mode"],
             blend_function=config["blend_function"], reasoner=reasoner, device=device, explain=explain,

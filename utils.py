@@ -7,7 +7,7 @@ import re
 from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, TypeVar, Any, Dict, Type
+from typing import List, Optional, TypeVar, Type
 
 import gymnasium as gym
 import numpy as np
@@ -199,6 +199,10 @@ def optional(val: Optional[T], default: T) -> T:
     return val
 
 
+def get_default_device() -> torch.Device:
+    return torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+
 def load_classes_in_package(package: str, subclass: Optional[Type[T]]) -> List[Type[T]]:
     classes = []
 
@@ -225,3 +229,16 @@ def load_model_state(checkpoint_path: Path, model: any, strict: bool = False):
     with open(checkpoint_path, "rb") as f:
         device = torch.device('cpu')
         model.load_state_dict(state_dict=torch.load(f, map_location=device, weights_only=True), strict=strict)
+
+
+FRAME_SIZE = {
+    "kangaroo": (160.0, 210.0)
+}
+
+DEFAULT_MODIFICATIONS = {
+    "kangaroo": [
+        "disable_coconut",
+        "randomize_kangaroo_position",
+        "change_level_0",
+    ]
+}

@@ -1,14 +1,14 @@
 import time
-from typing import Sequence
+from typing import Sequence, Optional, List
 
 import torch
 import torch as th
 from hackatari.core import HackAtari
 from ocatari.ram.kangaroo import MAX_ESSENTIAL_OBJECTS
 
-from blendrl.env_utils import kangaroo_modifs
 from blendrl.env_utils import make_env
 from blendrl.env_vectorized import VectorizedNudgeBaseEnv
+from utils import optional, DEFAULT_MODIFICATIONS
 
 
 class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
@@ -41,6 +41,10 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
         render_mode="rgb_array",
         render_oc_overlay=False,
         seed=None,
+        modifications: Optional[List[str]] = None,
+        reward_fn_path: Optional[str] = None,
+        *args,
+        **kwargs
     ):
         """
         Constructor for the VectorizedNudgeEnv class.
@@ -61,10 +65,12 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
                 env_name="ALE/Kangaroo-v5",
                 mode="ram",
                 obs_mode="ori",
-                modifs=kangaroo_modifs,
-                rewardfunc_path="in/envs/kangaroo/blenderl_reward.py",
+                modifs=optional(modifications, DEFAULT_MODIFICATIONS[VectorizedNudgeEnv.name]),
+                rewardfunc_path=optional(reward_fn_path, "in/envs/kangaroo/reward/default.py"),
                 render_mode=render_mode,
                 render_oc_overlay=render_oc_overlay,
+                *args,
+                **kwargs
             )
             for i in range(n_envs)
         ]

@@ -76,15 +76,13 @@ class ValuationModelDLGN(BaseValuationModel):
     def __init__(self, env_name: str, lang: Language, config: DLGNConfig, device=None):
         super().__init__(env_name, lang, config, device)
 
-        device = optional(device.type, "cuda" if th.cuda.is_available() else "cpu")
-
         dlgns = dict()
 
         for pred in self.lang.preds:
             if isinstance(pred, NeuralPredicate) and pred.name not in self.config.static_predicates:
                 module_name = pred.name
                 input_size = sum([dtype.num_features for dtype in pred.dtypes])
-                dlgn = ValuationDLGN(input_size=input_size, hidden_sizes=config.hidden_sizes, output_size=1, device=device)
+                dlgn = ValuationDLGN(input_size=input_size, hidden_sizes=config.hidden_sizes, output_size=1, device=self.device.type)
                 dlgns[module_name] = dlgn
 
         self.heads = th.nn.ModuleDict(dlgns)

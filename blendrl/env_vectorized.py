@@ -1,7 +1,9 @@
-from typing import Dict
 from abc import ABC
-from nsfr.utils.common import load_module
+from typing import Dict
+
 import torch
+
+from nsfr.utils.common import load_module
 
 
 class VectorizedNudgeBaseEnv(ABC):

@@ -24,10 +24,4 @@ def make_env(env):
     return env
 
 
-kangaroo_modifs = [
-    "disable_coconut",
-    "randomize_kangaroo_position",
-    "change_level_0",
-]
-
 seaquest_modifs = []

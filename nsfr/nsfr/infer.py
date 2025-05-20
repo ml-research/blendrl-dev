@@ -36,7 +36,7 @@ class InferModule(nn.Module):
         if not train:
             self.W = self.init_identity_weights(device)
         else:
-            # to learng the clause weights, initialize W as follows:
+            # to learn the clause weights, initialize W as follows:
             self.W = nn.Parameter(torch.Tensor(
                 np.random.normal(size=(m, I.size(0)))).to(device))
         # clause functions
@@ -83,6 +83,18 @@ class InferModule(nn.Module):
         # B * G
         R = softor(H, dim=0, gamma=self.gamma)
         return R
+
+    def get_clause_weights(self, mode="softor") -> torch.Tensor:
+        W_softmax = torch.softmax(self.W, 1)
+        if mode == "argmax":
+            weights = W_softmax.max(dim=0).values
+        elif mode == "softor":
+            weights = softor(W_softmax, dim=0)
+        else:
+            assert True, f"Unknown mode {mode}"
+
+        return weights
+
 
     def get_params(self):
         return self.W
