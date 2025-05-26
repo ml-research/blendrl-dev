@@ -161,6 +161,9 @@ class Checkpoint:
 
 
 def get_all_checkpoints(checkpoints_dir: Path, sorted: bool = True) -> List[Checkpoint]:
+    if not os.path.isdir(checkpoints_dir):
+        return []
+
     checkpoint_filenames = os.listdir(checkpoints_dir)
     result = []
     pattern = re.compile("[0-9]+")
@@ -225,10 +228,33 @@ def load_classes_in_package(package: str, subclass: Optional[Type[T]]) -> List[T
 
     return classes
 
-def load_model_state(checkpoint_path: Path, model: any, strict: bool = False):
+def load_model_state(checkpoint_path: Path, model: any, strict: bool = False, prefix: str = ""):
     with open(checkpoint_path, "rb") as f:
         device = torch.device('cpu')
-        model.load_state_dict(state_dict=torch.load(f, map_location=device, weights_only=True), strict=strict)
+        state_dict = torch.load(f, map_location=device, weights_only=True)
+        if prefix != "":
+            state_dict = {
+                k[len(prefix):] if k.startswith(prefix) else k: v
+                for k, v in state_dict.items() if k.startswith(prefix)
+            }
+        model.load_state_dict(state_dict=state_dict, strict=strict)
+
+
+def save_model_state(model: nn.Module, checkpoint_path: Path, prefixes: List[str] = []):
+    if len(prefixes) > 0:
+        state_dict = {
+            k: v for k, v in model.state_dict().items() if any(k.startswith(prefix) for prefix in prefixes)
+        }
+    else:
+        state_dict = model.state_dict()
+
+    torch.save(state_dict, checkpoint_path)
+
+
+def reset_parameters(model: torch.nn.Module):
+    for mod in model.modules():
+        if hasattr(mod, 'reset_parameters'):
+            mod.reset_parameters()
 
 
 FRAME_SIZE = {
@@ -242,3 +268,7 @@ DEFAULT_MODIFICATIONS = {
         "change_level_0",
     ]
 }
+
+
+def to_np(tensor: torch.Tensor) -> np.ndarray:
+    return tensor.detach().cpu().numpy()

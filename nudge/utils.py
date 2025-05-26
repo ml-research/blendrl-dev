@@ -15,8 +15,6 @@ from nsfr.nsfr import NSFReasoner
 from nsfr.utils.torch import softor
 from nudge.env import NudgeBaseEnv
 from utils import optional
-from .agents.logic_agent import NsfrActorCritic
-from .agents.neural_agent import ActorCritic
 
 
 def to_proportion(dic):
@@ -79,14 +77,14 @@ def simulate_prob(extracted_states, num_of_objs, key_picked):
 
 
 def load_model(model_dir,
-               env_kwargs: Optional[dict] = None,
+               env_kwargs_override: Optional[dict] = None,
                steps = None,
                device=torch.device('cuda:0'),
                explain=False,
                valuation_model=None,
-               config_overrides: Optional[dict] = None
+               config_override: Optional[dict] = None
                ):
-    from blendrl.agents.blender_agent import BlenderActorCritic
+
     # Determine all relevant paths
     model_dir = Path(model_dir)
     config_path = model_dir / "config.yaml"
@@ -102,23 +100,28 @@ def load_model(model_dir,
     # Load model's configuration
     with open(config_path, "r") as f:
         config: dict = yaml.load(f, Loader=yaml.Loader)
-        config.update(optional(config_overrides, {}))
+        config.update(optional(config_override, {}))
 
     algorithm = config["algorithm"]
     environment = config["env_name"]
 
     # Setup the environment
-    env = NudgeBaseEnv.from_name(environment, mode=algorithm, **optional(env_kwargs, {}))
+    env = NudgeBaseEnv.from_name(environment, mode=algorithm, **optional(env_kwargs_override, {}))
 
     rules = config["rules"]
 
-    print("Loading...")
     # Initialize the model
     if algorithm == 'ppo':
+        from nudge.agents.neural_agent import ActorCritic
+
         model = ActorCritic(env).to(device)
     elif algorithm == 'logic':
+        from nudge.agents.logic_agent import NsfrActorCritic
+
         model = NsfrActorCritic(env, device=device, rules=rules, valuation_model=valuation_model).to(device)
     else:
+        from blendrl.agents.blender_agent import BlenderActorCritic
+
         reasoner = config.get("reasoner", "nsfr")
         model = BlenderActorCritic(
             env, rules=rules, actor_mode=config["actor_mode"], blender_mode=config["blender_mode"],
@@ -129,8 +132,6 @@ def load_model(model_dir,
     # Load the model weights
     with open(checkpoint_path, "rb") as f:
         model.load_state_dict(state_dict=torch.load(f, map_location=torch.device('cpu'), weights_only=True), strict=False)
-    # model.logic_actor.im.W = torch.nn.Parameter(model.logic_actor.im.init_identity_weights(device))
-    # print(model.logic_actor.im.W)
 
     return model
 
@@ -139,7 +140,6 @@ def load_model_train(model_dir,
                      n_envs,
                device=torch.device('cuda:0'),
                steps = None):
-    from blendrl.agents.blender_agent import BlenderActorCritic
     # Determine all relevant paths
     model_dir = Path(model_dir)
     config_path = model_dir / "config.yaml"
@@ -167,10 +167,16 @@ def load_model_train(model_dir,
     print("Loading...")
     # Initialize the model
     if algorithm == 'ppo':
+        from nudge.agents.neural_agent import ActorCritic
+
         model = ActorCritic(env).to(device)
     elif algorithm == 'logic':
+        from nudge.agents.logic_agent import NsfrActorCritic
+
         model = NsfrActorCritic(env, device=device, rules=rules).to(device)
     else:
+        from blendrl.agents.blender_agent import BlenderActorCritic
+
         model = BlenderActorCritic(env, rules=rules, actor_mode=config["actor_mode"],
                                    blender_mode=config["blender_mode"], blend_function=config["blend_function"],
                                    device=device).to(device)

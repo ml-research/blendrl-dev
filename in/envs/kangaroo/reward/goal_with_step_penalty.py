@@ -7,6 +7,6 @@ def reward_function(self) -> float:
     if player.y == 4 and player.prev_y != 4:
         reward = 1.0
     else:
-        reward = 0.0
+        reward = -0.01
 
     return reward

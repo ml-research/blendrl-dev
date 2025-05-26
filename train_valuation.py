@@ -4,7 +4,7 @@ import random
 import time
 from collections import defaultdict
 from pathlib import Path
-from typing import Optional, Annotated, Union, List, Literal
+from typing import List
 
 import numpy as np
 import torch
@@ -12,148 +12,26 @@ import torch.nn as nn
 import torch.optim as optim
 import tyro
 import wandb
-from dataclasses import dataclass, asdict, field
+from dataclasses import asdict
 from rtpt import RTPT
 from torch.utils.tensorboard import SummaryWriter
 
 from blendrl.agents.blender_agent import BlenderActorCritic
 from blendrl.env_vectorized import VectorizedNudgeBaseEnv
-from utils import DEFAULT_MODIFICATIONS
-from valuation.utils import ValuationExperiment, load_model_config_classes
 from nsfr.utils.logic import LogicState
-from nudge.utils import load_model
+from utils import reset_parameters, save_model_state
+from valuation.experiment import ValuationExperiment
+from valuation.config import ValuationConfig
 
 IN_PATH = Path("in/")
 
 torch.set_num_threads(5)
 
 
-@dataclass
-class Args:
-    valuation_model: Union[
-        tuple([
-            Annotated[cls, tyro.conf.subcommand(cls.type)]
-            for cls in load_model_config_classes()
-        ])
-    ]
-    """the type and config of the valuation model"""
-    exp_name: str = os.path.basename(__file__)[: -len(".py")]
-    """the name of this experiment"""
-    seed: int = 0
-    """seed of the experiment"""
-    torch_deterministic: bool = True
-    """if toggled, `torch.backends.cudnn.deterministic=False`"""
-    cuda: bool = True
-    """if toggled, cuda will be enabled by default"""
-    track: bool = False
-    """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "blendRL_val"
-    """the wandb's project name"""
-    wandb_entity: Optional[str] = None
-    """the entity (team) of wandb's project"""
-    capture_video: bool = False
-    """whether to capture videos of the agent performances (check out `videos` folder)"""
-
-    # Algorithm specific arguments
-    # env_id: str = "Seaquest-v4"
-    # """the id of the environment"""
-    total_timesteps: int = 60_000_000
-    """total timesteps of the experiments"""
-    num_envs: int = 20
-    """the number of parallel game environments"""
-    num_steps: int = 128
-    """the number of steps to run in each environment per policy rollout"""
-    anneal_lr: bool = True
-    """Toggle learning rate annealing for policy and value networks"""
-    gamma: float = 0.99
-    """the discount factor gamma"""
-    gae_lambda: float = 0.95
-    """the lambda for the general advantage estimation"""
-    num_minibatches: int = 4
-    """the number of mini-batches"""
-    update_epochs: int = 10
-    """the K epochs to update the policy"""
-    norm_adv: bool = True
-    """Toggles advantages normalization"""
-    clip_coef: float = 0.1
-    """the surrogate clipping coefficient"""
-    clip_vloss: bool = True
-    """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
-    ent_coef: float = 0.01
-    """coefficient of the entropy"""
-    vf_coef: float = 0.5
-    """coefficient of the value function"""
-    max_grad_norm: float = 0.5
-    """the maximum norm for the gradient clipping"""
-    target_kl: Optional[float] = None
-    """the target KL divergence threshold"""
-
-    # to be filled in runtime
-    batch_size: int = 0
-    """the batch size (computed in runtime)"""
-    minibatch_size: int = 0
-    """the mini-batch size (computed in runtime)"""
-    num_iterations: int = 0
-    """the number of iterations (computed in runtime)"""
-
-    # added
-    agent_path: str = "models/kangaroo_demo"
-    """the path to the pretrained BlendRL agent"""
-    env_name: str = "kangaroo"
-    """the name of the environment"""
-    algorithm: Literal["logic", "ppo", "blender"] = "blender"
-    """the algorithm used in the agent"""
-    blender_mode: Literal["logic", "neural"] = "logic"
-    """the mode for the blend"""
-    blend_function: Literal["softmax", "gumbel_softmax"] = "softmax"
-    """the function to blend the neural and logic agents"""
-    actor_mode: Literal["logic", "neural", "hybrid"] = "hybrid"
-    """the mode for the agent"""
-    rules: str = "default"
-    """the ruleset used in the agent"""
-    save_steps: int = 5_000_000
-    """the number of steps to save models"""
-    pretrained: bool = False
-    """to use pretrained neural agent"""
-    joint_training: bool = False
-    """jointly train neural actor and logic actor and blender"""
-    learning_rate: float = 2.5e-4
-    """the learning rate of the optimizer (neural)"""
-    logic_learning_rate: float = 2.5e-4
-    """the learning rate of the optimizer (logic)"""
-    blender_learning_rate: float = 2.5e-4
-    """the learning rate of the optimizer (blender)"""
-    blend_ent_coef: float = 0.01
-    """coefficient of the blend entropy"""
-    anneal_blend_ent_coef: bool = False
-    """whether to gradually reduce the coefficient of the blend entropy"""
-    recover: bool = False
-    """recover the training from the last checkpoint"""
-    reasoner: str = "nsfr"
-    """the reasoner used in the agent; nsfr or neumann"""
-
-    learn_blending_weights: bool = False
-    """whether to finetune the blending weights"""
-    reset_blending_weights: bool = False
-    """whether to randomize the blending weights at the start of the training"""
-    reward_logic_subgoals: bool = False
-    """whether to extend the reward function by logic subgoals"""
-    extra_env_modifications: List[str] = field(default_factory=list)
-    """extra modifications that shall be applied to the environments"""
-    env_max_ep_steps: Optional[int] = None
-    """maximum steps after which an episode is reset"""
-    env_frameskip: int = 4
-    """frames to skip"""
-    reward_fn: str = "default"
-    """the reward function"""
-    #atom_ent_coef: float = 0.00
-    #"""coefficient of the atom values"""
-
-
 def main():
 
     # Parse arguments
-    args = tyro.cli(Args)
+    args = tyro.cli(ValuationConfig)
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
     args.num_iterations = args.total_timesteps // args.batch_size
@@ -170,7 +48,7 @@ def main():
     run_name = args.exp_name
     experiment = ValuationExperiment.from_name(run_name)
     experiment.init()
-    experiment.update_config(config, print_config=True)
+    experiment.update_config(args, print_config=True)
     logs_path = experiment.logs_path
     checkpoint_dir = experiment.checkpoints_dir
 
@@ -203,13 +81,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # Setup game environments
-    env_kwargs = {
-        "modifications": DEFAULT_MODIFICATIONS[args.env_name] + args.extra_env_modifications,
-        "frameskip": args.env_frameskip,
-        "reward_fn_path": f"in/envs/{args.env_name}/reward/{args.reward_fn}.py",
-    }
-    if args.env_max_ep_steps is not None:
-        env_kwargs["max_episode_steps"] = args.env_max_ep_steps
+    env_kwargs = experiment.env_config
 
     envs = VectorizedNudgeBaseEnv.from_name(
         args.env_name,
@@ -218,9 +90,6 @@ def main():
         seed=args.seed,
         **env_kwargs,
     )
-
-    # Load valuation model
-    valuation_model = experiment.get_valuation_model(device, load_from_latest_checkpoint=args.recover)
 
     # Load logs from latest checkpoint
     global_step = 0
@@ -248,31 +117,25 @@ def main():
         logs["batch_size"] = args.batch_size
 
     # Load agent model
-    config_overrides = {
-        "algorithm": args.algorithm,
-        "rules": args.rules,
-        "reasoner": args.reasoner,
-        "actor_mode": args.actor_mode,
-        "blender_mode": args.blender_mode,
-        "blend_function": args.blend_function,
-    }
-    agent: BlenderActorCritic = load_model(
-        args.agent_path,
-        env_kwargs=env_kwargs,
-        device=device,
-        valuation_model=valuation_model,
-        config_overrides=config_overrides
-    )
+    agent: BlenderActorCritic = experiment.get_model(device, load_from_latest_checkpoint=args.recover)
+    valuation_model = agent.valuation_model
 
-    # Randomize blending weights
+    # Randomize weights
     if args.reset_blending_weights:
         im = agent.blender.im
         im.W = nn.Parameter(torch.Tensor(np.random.normal(size=(im.m, im.I.size(0)))).to(device))
+    if args.reset_logic_critic:
+        reset_parameters(agent.logic_critic)
 
     # Collect models that shall be trained
     trainable_models = [valuation_model]
+    trainable_model_prefixes = ["valuation_model."]
     if args.learn_blending_weights:
         trainable_models.append(agent.blender.im)
+        trainable_model_prefixes.append("blender.im.")
+    if args.learn_logic_critic:
+        trainable_models.append(agent.logic_critic)
+        trainable_model_prefixes.append("logic_critic.")
 
     # Freeze agent
     agent.requires_grad_(False)
@@ -412,12 +275,19 @@ def main():
                     episodic_game_logic_blending_weights[k].clear()
                     print("Environment {} has been reset".format(k))
 
+                    # reset player position
+                    if args.randomize_start_position:
+                        noop_action = envs.pred2action['noop']
+                        envs.envs[k].step(noop_action)
+                        # this is a hack to re-apply the game modification after the episode has ended
+                        envs.envs[k].step_modifs[0].__self__.already_reset = False
+
             # Save the model
             if global_step > save_step_bar:
                 rtpt.step()
                 checkpoint_path = checkpoint_dir / f"step_{save_step_bar}.pth"
                 # save valuation model weights
-                torch.save(valuation_model.state_dict(), checkpoint_path)
+                save_model_state(agent, checkpoint_path, trainable_model_prefixes)
                 # save agent weights
                 # valuation_model.save(checkpoint_path, checkpoint_dir, [], [], [])
                 print("\nSaved model at:", checkpoint_path)
