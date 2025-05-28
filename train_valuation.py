@@ -19,9 +19,11 @@ from torch.utils.tensorboard import SummaryWriter
 from blendrl.agents.blender_agent import BlenderActorCritic
 from blendrl.env_vectorized import VectorizedNudgeBaseEnv
 from nsfr.utils.logic import LogicState
+from nudge.utils import get_objs
+from plot.plot_utils import discretize_frame, get_predicate_heatmaps
 from utils import reset_parameters, save_model_state
-from valuation.experiment import ValuationExperiment
 from valuation.config import ValuationConfig
+from valuation.experiment import ValuationExperiment
 
 IN_PATH = Path("in/")
 
@@ -92,8 +94,10 @@ def main():
     )
 
     # Load logs from latest checkpoint
+    start_step = 0
     global_step = 0
     save_step_bar = 0
+    log_step_bar = 0
     logs = defaultdict(list)
     if args.recover:
         # Get latest checkpoint
@@ -101,6 +105,7 @@ def main():
         if latest_checkpoint is not None:
             latest_steps = latest_checkpoint.step
             global_step = latest_steps
+            start_step = global_step
             save_step_bar = global_step + args.save_steps
             print(f"Resuming training from step {global_step}")
 
@@ -119,6 +124,8 @@ def main():
     # Load agent model
     agent: BlenderActorCritic = experiment.get_model(device, load_from_latest_checkpoint=args.recover)
     valuation_model = agent.valuation_model
+    trainable_models = [valuation_model]
+    saveable_model_prefixes = {"valuation_model."}
 
     # Randomize weights
     if args.reset_blending_weights:
@@ -128,14 +135,12 @@ def main():
         reset_parameters(agent.logic_critic)
 
     # Collect models that shall be trained
-    trainable_models = [valuation_model]
-    trainable_model_prefixes = ["valuation_model."]
     if args.learn_blending_weights:
         trainable_models.append(agent.blender.im)
-        trainable_model_prefixes.append("blender.im.")
+        saveable_model_prefixes.add("blender.im.")
     if args.learn_logic_critic:
         trainable_models.append(agent.logic_critic)
-        trainable_model_prefixes.append("logic_critic.")
+        saveable_model_prefixes.add("logic_critic.")
 
     # Freeze agent
     agent.requires_grad_(False)
@@ -147,8 +152,8 @@ def main():
     episodic_game_logic_blending_weights = [[] for _ in range(args.num_envs)]
 
     # Track models
-    if args.track:
-        wandb.watch(trainable_models, log="gradients")
+    # if args.track:
+    #     wandb.watch(trainable_models, log="gradients")
 
     # Setup optimizer
     params = []
@@ -287,7 +292,7 @@ def main():
                 rtpt.step()
                 checkpoint_path = checkpoint_dir / f"step_{save_step_bar}.pth"
                 # save valuation model weights
-                save_model_state(agent, checkpoint_path, trainable_model_prefixes)
+                save_model_state(agent, checkpoint_path, list(saveable_model_prefixes))
                 # save agent weights
                 # valuation_model.save(checkpoint_path, checkpoint_dir, [], [], [])
                 print("\nSaved model at:", checkpoint_path)
@@ -428,12 +433,13 @@ def main():
         writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
         writer.add_scalar("losses/clipfrac", np.mean(clipfracs), global_step)
         writer.add_scalar("losses/explained_variance", explained_var, global_step)
-        # the first SPS after the recovery is not accurate
-        if int(global_step / (time.time() - start_time)) < 10000:
-            print("SPS:", int(global_step / (time.time() - start_time)))
-            writer.add_scalar(
-                "charts/SPS", int(global_step / (time.time() - start_time)), global_step
-            )
+
+        sps = (global_step - start_step) / (time.time() - start_time)
+        print(f"SPS: {sps:.2f}")
+        writer.add_scalar(
+            "charts/SPS", sps, global_step
+        )
+
         clause_weights = {f"{i+1}:{clause.head.pred.name}": agent.blender.im.get_clause_weights()[i].item() for i, clause in enumerate(agent.blender.clauses)}
         for clause_name, clause_weight in clause_weights.items():
             writer.add_scalar(

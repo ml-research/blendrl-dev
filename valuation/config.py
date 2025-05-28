@@ -135,5 +135,9 @@ class ValuationConfig:
     """the reward function"""
     randomize_start_position: bool = False
     """whether to randomize the start position of the player after the episode has finished"""
+    logic_critic_path: Optional[str] = None
+    """path to the experiment from which the logic critic shall be initialized from"""
+    log_heatmaps_steps: Optional[int] = None
+    """steps after which heatmaps for e.g. critics and valuation models shall be logged (if None, logging will be skipped)"""
     #atom_ent_coef: float = 0.00
     #"""coefficient of the atom values"""

@@ -159,6 +159,11 @@ class ValuationExperiment:
             if checkpoint is not None:
                 load_model_state(checkpoint.path, model, strict=False)
 
+        if self.config.logic_critic_path is not None:
+            logic_critic_experiment = ValuationExperiment.from_path(Path(self.config.logic_critic_path))
+            logic_critic_checkpoint_path = logic_critic_experiment.latest_checkpoint.path
+            load_model_state(logic_critic_checkpoint_path, model.logic_critic, strict=False, prefix="logic_critic.")
+
         self._model = model
         return model
 

@@ -300,3 +300,16 @@ def load_neuralppo_model(model_dir,
     # print(model.logic_actor.im.W)
 
     return model
+
+
+def get_objs(env: NudgeBaseEnv, category: str) -> list:
+    obj_offset = env.obj_offsets.get(category)
+    if obj_offset is None:
+        return []
+
+    result = []
+    for obj in env.env.objects[obj_offset:]:
+        if obj.category == category:
+            result.append(obj)
+
+    return result

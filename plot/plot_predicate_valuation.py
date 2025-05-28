@@ -1,86 +1,64 @@
+import logging
 import os
-from argparse import ArgumentParser
 from io import BytesIO
 from typing import List
 
 import imageio.v2 as iio
 import numpy as np
 import torch as th
+import tyro
 from PIL import Image
+from dataclasses import dataclass, field
 from matplotlib import pyplot as plt, patches
 from tqdm import tqdm
 
 from nudge.env import NudgeBaseEnv
-from plot.plot_utils import get_cmap, create_heatmap_fig, fig_add_title, save_fig
-from utils import get_default_device, FRAME_SIZE, to_np, load_model_state
+from nudge.utils import get_objs
+from plot.plot_utils import get_cmap, create_heatmap_fig, fig_add_title, save_fig, get_predicate_heatmaps, \
+    get_logic_critic_heatmap, discretize_frame
+from utils import get_default_device, FRAME_SIZE, load_model_state
 from valuation.experiment import ValuationExperiment
-from valuation.models.base import BaseValuationModel
-import logging
 
 logging.getLogger('imageio_ffmpeg').setLevel(logging.ERROR)
 
 CMAP = get_cmap('jet')
 
+@dataclass
+class Args:
+    exp_name: List[str]
+    """List of experiment names"""
+    predicate_name: List[str]
+    """List of predicate names"""
+    position: List[str] = field(default_factory=lambda: ["5"])
+    """List of positions. If number between 1-9, the positions align like a numpad, e.g., 
+       1=top left corner, 5=center, 9 bottom right corner. If [Object Category]_[i], 
+       the position of the i-th object of the specified category in the environment will be used, e.g.,
+       Ladder_1=position of the first ladder."""
+    overlay_positions: bool = False
+    """Whether a heatmap shall be created that overlays the heatmaps of all positions"""
+    contour_objects: List[str] = field(default_factory=lambda: [])
+    """Object categories that shall be plotted as contours in the heatmaps"""
+    checkpoint: List[int] = field(default_factory=lambda: [])
+    """List of individual checkpoint steps to plot. If empty, an animation will be created according to the 
+       skip argument and additionally, the last checkpoint will be saved as still plot.
+       If not empty, no animations will be created and only still plots for the specified steps will be saved."""
+    save_all_checkpoints: bool = False
+    """Whether to save all checkpoints (excluding skipped ones) as still plots. 
+       If set, the checkpoint argument will be ignored."""
 
-def parse_args():
-    parser = ArgumentParser()
+    plot_logic_critic: bool = False
+    """Whether to additionally plot the values of the logic critic"""
 
-    parser.add_argument("--exp-name", nargs='+', type=str, required=True)
-    parser.add_argument("--predicate-name", nargs='+', type=str, required=True)
-    parser.add_argument("--position", nargs='+', type=str, default=5)
-    parser.add_argument("--obj-overlays", nargs='*', type=str)
-    parser.add_argument("--overlay-positions", action='store_true')
-    parser.add_argument("--checkpoint", nargs='+', type=int, default=None)
-
-    parser.add_argument("--plot-logic-critic", action='store_true')
-
-    parser.add_argument("--fps", type=int, default=25)
-    parser.add_argument("--skip", type=int, default=1)
-    parser.add_argument("--cell-size", type=int, default=5)
-
-    return parser.parse_args()
-
-def get_predicate_heatmaps(valuation_model: BaseValuationModel, predicate_name: str, player_input: th.Tensor, obj_inputs: List[th.Tensor], frame_shape: (int, int), include_overlay: bool) -> List[np.ndarray]:
-    heatmaps = []
-
-    for obj_input in obj_inputs:
-        # Compute heatmap
-        output = valuation_model(predicate_name, player_input, obj_input).view(*frame_shape)
-        heatmap = to_np(output).T
-        heatmaps.append(heatmap)
-
-    if include_overlay:
-        # Compute overlayed heatmap
-        overlayed_heatmap = np.maximum.reduce(heatmaps)
-        heatmaps.append(overlayed_heatmap)
-
-    return heatmaps
-
-
-def get_logic_critic_heatmap(logic_critic: th.nn.Module, player_input: th.Tensor, obj_input: th.Tensor, frame_shape: (int, int)) -> np.ndarray:
-    x = obj_input
-    x[:, 0] = player_input
-    output = logic_critic(x).view(*frame_shape)
-    heatmap = to_np(output).T
-
-    return heatmap
-
-
-def get_objs(env: NudgeBaseEnv, category: str) -> list:
-    obj_offset = env.obj_offsets.get(category)
-    if obj_offset is None:
-        return []
-
-    result = []
-    for obj in env.env.objects[obj_offset:]:
-        if obj.category == category:
-            result.append(obj)
-
-    return result
+    fps: int = 25
+    """FPS of the animations"""
+    skip: int = 1
+    """How many checkpoint steps to move forward in the animation each frame. 1=all checkpoints; 2=every second checkpoint."""
+    resolution: int = 32
+    """Resolution of the heatmaps (number of cells in shortest dimension)"""
 
 
 def main():
-    args = parse_args()
+    args = tyro.cli(Args)
 
     device = get_default_device()
 
@@ -100,29 +78,18 @@ def main():
         if len(checkpoints) == 0:
             print("No checkpoints found")
             continue
-        checkpoint_steps = [checkpoints[-1].step] if args.checkpoint is None else args.checkpoint
+        checkpoint_steps = [checkpoints[-1].step] if len(args.checkpoint) == 0 else args.checkpoint
 
         # Create plots directory
         plots_dir = experiment.plots_dir / "predicate_valuation"
         os.makedirs(plots_dir, exist_ok=True)
 
-        # Calculate grid
-        frame_size = FRAME_SIZE[experiment.env_name]
-        frame_shape = (int(frame_size[0] // args.cell_size), int(frame_size[1] // args.cell_size))
-        num_grid_cells = frame_shape[0] * frame_shape[1]
-
         # Calculate player inputs
-        player_input = th.tensor([1, 0, 0, 0], device=device).repeat(num_grid_cells, 1)
-        idx = 0
-        for i in range(frame_shape[0]):
-            x = (frame_size[0] / frame_shape[0]) * (i + 0.5)
-            for j in range(frame_shape[1]):
-                y = (frame_size[1] / frame_shape[1]) * (j + 0.5)
-                player_input[idx, 1] = x
-                player_input[idx, 2] = y
-                idx += 1
+        player_input, grid_shape = discretize_frame(experiment.env_name, args.resolution, device)
+        num_grid_cells = grid_shape[0] * grid_shape[1]
 
         # Calculate object inputs
+        frame_size = FRAME_SIZE[experiment.env_name]
         object_inputs = []
         for position in args.position:
             if position.isdigit():
@@ -141,7 +108,7 @@ def main():
                 else:
                     assert True, f"No object {obj_type} with index {obj_index} found"
 
-            obj_input = th.tensor([1, obj_pos[0], obj_pos[1], 0], device=device).repeat(num_grid_cells, 1)
+            obj_input, _ = discretize_frame(experiment.env_name, args.resolution, device, obj_pos)
             object_inputs.append((position, obj_input, obj_pos))
 
         # Calculate logic state
@@ -149,7 +116,7 @@ def main():
 
         # Determine object overlays
         obj_overlays = []
-        for category in args.obj_overlays:
+        for category in args.contour_objects:
             objs = get_objs(env, category)
             obj_overlays.extend([obj.xywh for obj in objs])
 
@@ -160,8 +127,8 @@ def main():
         # Iterate all checkpoints to create still heatmaps
         for checkpoint in tqdm(checkpoints):
 
-            is_still_frame = checkpoint.step in checkpoint_steps
-            is_animation_frame = args.checkpoint is None and (checkpoint.step % (10_000 * args.skip) == 0)
+            is_still_frame = (args.save_all_checkpoints and (checkpoint.step % (10_000 * args.skip) == 0)) or (checkpoint.step in checkpoint_steps)
+            is_animation_frame = len(args.checkpoint) == 0 and (checkpoint.step % (10_000 * args.skip) == 0)
 
             # Compute heatmaps
             if is_still_frame or is_animation_frame:
@@ -176,14 +143,16 @@ def main():
                         predicate_name,
                         player_input,
                         [oi[1] for oi in object_inputs],
-                        frame_shape,
+                        grid_shape,
                         include_overlay=args.overlay_positions
                     )
                     heatmaps.extend([{
                         "name": predicate_name,
                         "position": oi[0],
                         "heatmap": hm,
-                        "obj_positions": [oi[2]]
+                        "obj_positions": [oi[2]],
+                        "vmin": 0,
+                        "vmax": 1,
                     } for oi, hm in zip(object_inputs, predicate_heatmaps)])
 
                     if args.overlay_positions:
@@ -191,11 +160,13 @@ def main():
                             "name": predicate_name,
                             "position": "all",
                             "heatmap": predicate_heatmaps[-1],
-                            "obj_positions": [oi[2] for oi in object_inputs]
+                            "obj_positions": [oi[2] for oi in object_inputs],
+                            "vmin": 0,
+                            "vmax": 1,
                         })
 
                 if args.plot_logic_critic:
-                    heatmap = get_logic_critic_heatmap(agent.logic_critic, player_input, logic_critic_input, frame_shape)
+                    heatmap = get_logic_critic_heatmap(agent.logic_critic, player_input, logic_critic_input, grid_shape)
                     heatmaps.append({
                         "name": "logic_critic",
                         "position": None,
@@ -210,7 +181,7 @@ def main():
                     # Initialize figures and animations
                     if len(artists) < len(heatmaps):
                         # Draw heatmap
-                        fig, ax, im = create_heatmap_fig(info["heatmap"], CMAP, vmin=info.get("vmin", 0), vmax=info.get("vmax", 1), extent=(0, frame_size[0], frame_size[1], 0))
+                        fig, ax, im = create_heatmap_fig(info["heatmap"], CMAP, vmin=info["vmin"], vmax=info["vmax"], extent=(0, frame_size[0], frame_size[1], 0))
 
                         # Draw object positions
                         for obj_grid_pos in info["obj_positions"]:
@@ -261,7 +232,10 @@ def main():
                     hm = info["heatmap"]
                     im = artist["im"]
                     im.set_array(hm)
-                    im.set_clim(vmin=hm.min(), vmax=hm.max())
+                    im.set_clim(
+                        vmin=hm.min() if info["vmin"] is None else info["vmin"],
+                        vmax=hm.max() if info["vmax"] is None else info["vmax"]
+                    )
                     artist["subtitle"].set_text(subtitle)
 
                     writer = writers[i]["writer"]
