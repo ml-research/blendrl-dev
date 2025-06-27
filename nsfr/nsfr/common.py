@@ -1,4 +1,7 @@
 import os
+from typing import Union
+
+import torch
 
 from nsfr.facts_converter import FactsConverter
 from nsfr.nsfr import NSFReasoner
@@ -7,7 +10,7 @@ from nsfr.valuation import ValuationModule
 from utils import optional
 
 
-def get_nsfr_model(env_name: str, rules: str, device: str, train=False, explain=False, valuation_model=None):
+def get_nsfr_model(env_name: str, rules: str, device: Union[str, torch.device], train=False, explain=False, valuation_model=None):
     current_path = os.path.dirname(__file__)
     lark_path = os.path.join(current_path, 'lark/exp.lark')
     lang_base_path = f"in/envs/{env_name}/logic/"

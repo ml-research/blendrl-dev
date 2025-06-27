@@ -47,17 +47,7 @@ class NSFReasoner(nn.Module):
         return prednames
 
     def forward(self, x):
-        zs = x
-        # convert to the valuation tensor
-        self.V_0 = self.fc(zs, self.atoms, self.bk)
-        
-        # dummy variable to compute inpute gradients
-        if self.explain:
-            self.dummy_zeros = torch.zeros_like(self.V_0, requires_grad=True).to(torch.float32).to(self.device)
-            self.dummy_zeros.requires_grad_()
-            self.dummy_zeros.retain_grad()
-            # add dummy zeros to get input gradients
-            self.V_0 = self.V_0 + self.dummy_zeros
+        self.V_0 = self.init_values(x)
 
         # perform T-step forward-chaining reasoning
         self.V_T = self.im(self.V_0)
@@ -65,6 +55,21 @@ class NSFReasoner(nn.Module):
         # only return probs of actions
         actions = self.get_predictions(self.V_T, prednames=self.prednames)
         return actions
+
+    def init_values(self, x: torch.Tensor) -> torch.Tensor:
+        # convert to the valuation tensor
+        V_0 = self.fc(x, self.atoms, self.bk)
+
+        # dummy variable to compute input gradients
+        if self.explain:
+            self.dummy_zeros = torch.zeros_like(V_0, requires_grad=True).to(torch.float32).to(self.device)
+            self.dummy_zeros.requires_grad_()
+            self.dummy_zeros.retain_grad()
+            # add dummy zeros to get input gradients
+            V_0 = V_0 + self.dummy_zeros
+
+        return V_0
+
 
     def predict(self, v, predname):
         """Extract a value from the valuation tensor using a given predicate."""
@@ -200,3 +205,41 @@ class NSFReasoner(nn.Module):
     def get_predictions(self, V_T, prednames):
         predicts = self.predict_multi(v=V_T, prednames=prednames)
         return predicts
+
+    def get_states_for_each_clause(self) -> List[List[LogicState]]:
+        states = []
+        num_envs = self.V_T.shape[0]
+        for env_index in range(num_envs):
+            env_states = []
+            for i, clause in enumerate(self.clauses):
+                value = self.predict(self.V_T, clause.head.pred.name)[env_index].item()
+                atoms = []
+                for body_atom in clause.body:
+                    predname = body_atom.pred.name
+                    probs = self.get_probs(predname, env_index)
+                    atom_value = 0.0
+                    atom = None
+                    for ground_atom, prob in probs.items():
+                        if prob >= atom_value:
+                            atom = ground_atom
+                            atom_value = prob
+                    atoms.append(atom)
+                ground_clause = Clause(clause.head, atoms)
+                state = LogicState(ground_clause, value)
+                env_states.append(state)
+            states.append(env_states)
+
+        return states
+
+    def get_states(self) -> List[LogicState]:
+        result = []
+        logic_states = self.get_states_for_each_clause()
+        num_envs = self.V_T.shape[0]
+        for env_index in range(num_envs):
+            # determine logic state with the highest value
+            next_state = logic_states[env_index][0]
+            for logic_state in logic_states[env_index][1:]:
+                if logic_state.prob > next_state.prob:
+                    next_state = logic_state
+            result.append(next_state)
+        return result

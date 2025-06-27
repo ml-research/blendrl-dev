@@ -121,6 +121,10 @@ def get_index_by_predname(pred_str, atoms):
     assert 1, pred_str + ' not found.'
 
 
+def get_indices_by_predname(pred_str: str, atoms: List[Atom]):
+    return [i for i, atom in enumerate(atoms) if atom.pred.name == pred_str]
+
+
 def parse_clauses(lang, clause_strs):
     du = DataUtils(lang)
     return [du.parse_clause(c) for c in clause_strs]

@@ -1,6 +1,6 @@
 from typing import List
 
-from nsfr.fol.logic import Predicate, FuncSymbol, Const
+from nsfr.fol.logic import Predicate, FuncSymbol, Const, NeuralPredicate
 
 
 class Language(object):
@@ -118,3 +118,7 @@ class Language(object):
         pred = [pred for pred in self.preds if pred.name == pred_name]
         assert len(pred) == 1, 'Too many or less match in ' + pred_name
         return pred[0]
+
+    @property
+    def neural_predicates(self) -> List[NeuralPredicate]:
+        return [pred for pred in self.preds if isinstance(pred, NeuralPredicate)]
