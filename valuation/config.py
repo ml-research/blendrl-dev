@@ -1,11 +1,24 @@
 from __future__ import annotations
 
-from typing import Union, Annotated, Optional, Literal, List
+from typing import Union, Annotated, Optional, Literal, List, Type
 
 import tyro
 from dataclasses import dataclass, field
 
-from valuation.utils import load_model_config_classes
+from utils import load_classes_in_package
+from valuation.models.base import BaseValuationModelConfig
+
+
+def load_model_config_class(type: str) -> Optional[Type[BaseValuationModelConfig]]:
+    classes = load_model_config_classes()
+    for cls in classes:
+        if cls.type == type:
+            return cls
+    return None
+
+
+def load_model_config_classes() -> List[Type[BaseValuationModelConfig]]:
+    return load_classes_in_package("valuation/models", BaseValuationModelConfig)
 
 
 subcommands = tuple(
@@ -14,12 +27,15 @@ subcommands = tuple(
 )
 
 ValuationModelType = Union[subcommands]
+OracleSamplingMode = Literal["grid", "random"]
 
 
 @dataclass
 class ValuationConfig:
     valuation_model: ValuationModelType
     """the type and config of the valuation model"""
+    oracle_model: Optional[ValuationModelType] = None
+    """the type and config of the oracle model"""
     exp_name: str = "train_valuation"
     """the name of this experiment"""
     seed: int = 0
@@ -139,5 +155,21 @@ class ValuationConfig:
     """path to the experiment from which the logic critic shall be initialized from"""
     log_heatmaps_steps: Optional[int] = None
     """steps after which heatmaps for e.g. critics and valuation models shall be logged (if None, logging will be skipped)"""
+    regularize_ood_coef: float = 0.0
+    regularize_ood_eps: float = 1.0
+    concept_coef: float = 0.1
+    """coefficient of the concept loss"""
+    oracle_sampling_mode: OracleSamplingMode = "grid"
+    """how to sample points for the oracle"""
+    oracle_num_samples: int = 961
+    """how many points to sample for the oracle"""
+    logic_critic_use_only_player_pos: bool = False
+    """whether the logic critic only uses the player position as input"""
+    save_train_data: bool = False
+    """whether to save data used to train the model"""
+    reset_logic_actor: bool = False
+    """whether to reset the weights of the logic actor"""
+    learn_logic_actor: bool = False
+    """whether to finetune the logic actor"""
     #atom_ent_coef: float = 0.00
     #"""coefficient of the atom values"""

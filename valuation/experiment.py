@@ -16,10 +16,10 @@ from nudge.agents.logic_agent import NsfrActorCritic
 from nudge.agents.neural_agent import ActorCritic
 from nudge.utils import load_model
 from utils import Checkpoint, get_all_checkpoints, get_latest_checkpoint, \
-    load_model_state, DEFAULT_MODIFICATIONS
-from valuation.config import ValuationConfig
-from valuation.models.base import BaseValuationModelConfig
-from valuation.utils import load_model_config_class, load_model_class, get_default_valuation_model
+    load_model_state, DEFAULT_MODIFICATIONS, optional
+from valuation.config import ValuationConfig, load_model_config_class
+from valuation.models.base import BaseValuationModelConfig, BaseValuationModel
+from valuation.utils import load_model_class, get_default_valuation_model
 
 
 class ValuationExperiment:
@@ -33,12 +33,13 @@ class ValuationExperiment:
         self.plots_dir = self.dir / "plots"
         self.config_path = self.dir / "config.yaml"
         self.logs_path = self.dir / "logs.json"
+        self.logs_dir = self.dir / "logs"
         self.sim_path = self.dir / "sim.npz"
 
         self.name = self.dir.name
 
         self._model = None
-        self._valuation_model = None
+        self._oracle = None
 
         # Load config
         self.config = self.load_config()
@@ -67,6 +68,22 @@ class ValuationExperiment:
         os.makedirs(self.checkpoints_dir, exist_ok=True)
         os.makedirs(self.images_dir, exist_ok=True)
         os.makedirs(self.plots_dir, exist_ok=True)
+        os.makedirs(self.logs_dir, exist_ok=True)
+
+    def _load_config(self, config: dict) -> Optional[ValuationConfig]:
+        for valuation_model_field in ("valuation_model", "oracle_model"):
+            model_type = optional(config.get(valuation_model_field), {}).get("type")
+            valuation_model_config = None
+            if model_type is not None:
+                model_config_cls = load_model_config_class(model_type)
+                model_params = config[valuation_model_field]
+                del model_params["type"]
+                valuation_model_config = model_config_cls(**model_params)
+
+            config[valuation_model_field] = valuation_model_config
+
+        args = ValuationConfig(**config)
+        return args
 
     def load_config(self) -> Optional[ValuationConfig]:
         if not self.config_path.exists():
@@ -75,18 +92,10 @@ class ValuationExperiment:
         with open(self.config_path, "r") as f:
             config = yaml.load(f, Loader=yaml.Loader)
 
-        model_type = config.get("valuation_model", {}).get("type")
-        valuation_model_config = None
-        if model_type is not None:
-            model_config_cls = load_model_config_class(model_type)
-            model_params = config["valuation_model"]
-            del model_params["type"]
-            valuation_model_config = model_config_cls(**model_params)
+        if config is None:
+            return None
 
-        config["valuation_model"] = valuation_model_config
-
-        args = ValuationConfig(**config)
-        return args
+        return self._load_config(config)
 
     def update_config(self, config: ValuationConfig, print_config=False):
         self.config = config
@@ -103,6 +112,10 @@ class ValuationExperiment:
         return self.config.env_name
 
     @property
+    def language(self) -> Language:
+        return get_language(self.env_name, self.config.rules)
+
+    @property
     def valuation_model_type(self) -> Optional[str]:
         if self.config.valuation_model is not None:
             return self.config.valuation_model.type
@@ -112,10 +125,6 @@ class ValuationExperiment:
     @property
     def valuation_model_config(self) -> BaseValuationModelConfig:
         return self.config.valuation_model
-
-    @property
-    def language(self) -> Language:
-        return get_language(self.env_name, self.config.rules)
 
     def get_default_valuation_model(self, device: torch.device) -> nn.Module:
         return get_default_valuation_model(self.env_name, device)
@@ -132,18 +141,21 @@ class ValuationExperiment:
 
         return env_kwargs
 
+    def _get_valuation_model(self, config: BaseValuationModelConfig, device: torch.device) -> Optional[BaseValuationModel]:
+        if config is None or config.type is None:
+            return None
+        else:
+            model_cls = load_model_class(config.type)
+            assert model_cls is not None, f"No valuation model of type '{config.type}' found"
+            return model_cls(env_name=self.env_name, lang=self.language, config=config, device=device)
+
     def get_model(self, device: torch.device, load_from_latest_checkpoint: bool = True) -> Union[NsfrActorCritic, ActorCritic, BlenderActorCritic]:
         if self._model is not None:
             return self._model
 
-        valuation_model_type = self.valuation_model_type
-
-        if valuation_model_type is None:
+        valuation_model = self._get_valuation_model(self.valuation_model_config, device)
+        if valuation_model is None:
             valuation_model = self.get_default_valuation_model(device)
-        else:
-            model_cls = load_model_class(valuation_model_type)
-            assert model_cls is not None, f"No valuation model of type '{valuation_model_type}' found"
-            valuation_model = model_cls(env_name=self.env_name, lang=self.language, config=self.valuation_model_config, device=device)
 
         model = load_model(
             self.config.agent_path,
@@ -157,15 +169,22 @@ class ValuationExperiment:
             checkpoint = self.latest_checkpoint
 
             if checkpoint is not None:
-                load_model_state(checkpoint.path, model, strict=False)
+                load_model_state(checkpoint.path, model)
 
         if self.config.logic_critic_path is not None:
             logic_critic_experiment = ValuationExperiment.from_path(Path(self.config.logic_critic_path))
             logic_critic_checkpoint_path = logic_critic_experiment.latest_checkpoint.path
-            load_model_state(logic_critic_checkpoint_path, model.logic_critic, strict=False, prefix="logic_critic.")
+            load_model_state(logic_critic_checkpoint_path, model.logic_critic, include_prefixes=["logic_critic."], discard_prefix_from_key=True)
 
         self._model = model
         return model
+
+    def get_oracle(self, device: torch.device) -> Optional[BaseValuationModel]:
+        if self._oracle is not None:
+            return self._oracle
+
+        self._oracle = self._get_valuation_model(self.config.oracle_model, device)
+        return self._oracle
 
     @property
     def checkpoints(self) -> List[Checkpoint]:
