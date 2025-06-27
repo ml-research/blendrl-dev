@@ -1,22 +1,21 @@
 from __future__ import annotations
 
+import glob
 import inspect
 import os
 import pkgutil
 import re
 from collections import OrderedDict
-from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, TypeVar, Type
+from typing import List, Optional, TypeVar, Type, Union, Dict
 
 import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn as nn
+from dataclasses import dataclass
 from torch.distributions.categorical import Categorical
 
-
-# from huggingface_sb3 import load_from_hub, push_to_hub
 
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     torch.nn.init.orthogonal_(layer.weight, std)
@@ -228,16 +227,26 @@ def load_classes_in_package(package: str, subclass: Optional[Type[T]]) -> List[T
 
     return classes
 
-def load_model_state(checkpoint_path: Path, model: any, strict: bool = False, prefix: str = ""):
+def load_model_state(checkpoint_path: Path, model: any, strict: bool = False, include_prefixes: Optional[List[str]] = None, exclude_prefixes: List[str] = [], discard_prefix_from_key: bool = False):
     with open(checkpoint_path, "rb") as f:
         device = torch.device('cpu')
         state_dict = torch.load(f, map_location=device, weights_only=True)
-        if prefix != "":
-            state_dict = {
-                k[len(prefix):] if k.startswith(prefix) else k: v
-                for k, v in state_dict.items() if k.startswith(prefix)
-            }
-        model.load_state_dict(state_dict=state_dict, strict=strict)
+
+    new_state_dict = {}
+    for k, v in state_dict.items():
+        if any(k.startswith(exclude_prefix) for exclude_prefix in exclude_prefixes):
+            continue
+
+        if include_prefixes is None:
+            new_state_dict[k] = v
+        else:
+            for include_prefix in include_prefixes:
+                if k.startswith(include_prefix):
+                    new_key = k if not discard_prefix_from_key else k[len(include_prefix):]
+                    new_state_dict[new_key] = v
+                    break
+
+    model.load_state_dict(state_dict=new_state_dict, strict=strict)
 
 
 def save_model_state(model: nn.Module, checkpoint_path: Path, prefixes: List[str] = []):
@@ -272,3 +281,219 @@ DEFAULT_MODIFICATIONS = {
 
 def to_np(tensor: torch.Tensor) -> np.ndarray:
     return tensor.detach().cpu().numpy()
+
+
+def running_average(arr: np.ndarray, window: int) -> np.ndarray:
+    result = np.empty_like(arr, dtype=float)
+    for i in range(len(arr)):
+        start = max(0, i - window + 1)
+        result[i] = np.mean(arr[start:i+1])
+    return result
+
+
+class ArrayIO:
+    """
+    A helper class for chunked storage of numpy arrays with compression.
+
+    This class manages large datasets by storing them in compressed chunks,
+    allowing for efficient appending and retrieval operations.
+    """
+
+    def __init__(self, dir: Union[str, Path], chunk_size: int = 65536):
+        """
+        Initialize ArrayIO with directory and chunk size.
+
+        Args:
+            dir: Directory path where chunks will be stored
+            chunk_size: Number of elements along dimension 0 before saving a chunk
+        """
+        self.dir = Path(dir)
+        self.chunk_size = chunk_size
+        self.buffers: Dict[str, np.ndarray] = {}
+        self.chunk_counts: Dict[str, int] = {}
+
+        # Create base directory if it doesn't exist
+        self.dir.mkdir(parents=True, exist_ok=True)
+
+        # Initialize chunk counts by scanning existing files
+        self._initialize_chunk_counts()
+
+    def _initialize_chunk_counts(self):
+        """Initialize chunk counts by scanning existing chunk files."""
+        for key_dir in self.dir.iterdir():
+            if key_dir.is_dir():
+                key = key_dir.name
+                # Find all .npz files and get the highest numbered chunk
+                chunk_files = glob.glob(str(key_dir / "*.npz"))
+                if chunk_files:
+                    chunk_nums = []
+                    for f in chunk_files:
+                        try:
+                            chunk_num = int(Path(f).stem)
+                            chunk_nums.append(chunk_num)
+                        except ValueError:
+                            continue
+                    if chunk_nums:
+                        self.chunk_counts[key] = max(chunk_nums) + 1
+                    else:
+                        self.chunk_counts[key] = 0
+                else:
+                    self.chunk_counts[key] = 0
+
+    def _get_chunk_path(self, key: str, chunk_idx: int) -> Path:
+        """Get the file path for a specific chunk."""
+        key_dir = self.dir / key
+        key_dir.mkdir(parents=True, exist_ok=True)
+        return key_dir / f"{chunk_idx}.npz"
+
+    def _save_chunk(self, key: str, array: np.ndarray):
+        """Save a chunk to disk with compression."""
+        chunk_idx = self.chunk_counts.get(key, 0)
+        chunk_path = self._get_chunk_path(key, chunk_idx)
+
+        # Save with compression
+        np.savez_compressed(chunk_path, data=array)
+
+        # Update chunk count
+        self.chunk_counts[key] = chunk_idx + 1
+
+    def _load_chunk(self, key: str, chunk_idx: int) -> Optional[np.ndarray]:
+        """Load a specific chunk from disk."""
+        chunk_path = self._get_chunk_path(key, chunk_idx)
+        if chunk_path.exists():
+            with np.load(chunk_path) as data:
+                return data['data']
+        return None
+
+    def append(self, key: str, array: np.ndarray):
+        """
+        Append a numpy array to the dataset identified by key.
+
+        Args:
+            key: Dataset identifier
+            array: Numpy array to append (concatenated along dimension 0)
+        """
+        if not isinstance(array, np.ndarray):
+            raise ValueError("Input must be a numpy array")
+
+        if array.ndim == 0:
+            raise ValueError("Cannot append 0-dimensional arrays")
+
+        # Initialize buffer if it doesn't exist
+        if key not in self.buffers:
+            self.buffers[key] = array.copy()
+            if key not in self.chunk_counts:
+                self.chunk_counts[key] = 0
+        else:
+            # Check shape compatibility (all dimensions except 0 must match)
+            if array.shape[1:] != self.buffers[key].shape[1:]:
+                raise ValueError(f"Shape mismatch: existing {self.buffers[key].shape[1:]} vs new {array.shape[1:]}")
+
+            # Concatenate along dimension 0
+            self.buffers[key] = np.concatenate([self.buffers[key], array], axis=0)
+
+        # Check if we need to save chunks
+        while self.buffers[key].shape[0] >= self.chunk_size:
+            # Extract chunk
+            chunk = self.buffers[key][:self.chunk_size]
+
+            # Save chunk
+            self._save_chunk(key, chunk)
+
+            # Keep remaining data in buffer
+            if self.buffers[key].shape[0] == self.chunk_size:
+                # Buffer is exactly chunk_size, clear it
+                del self.buffers[key]
+                break
+            else:
+                # Keep remaining data
+                self.buffers[key] = self.buffers[key][self.chunk_size:]
+
+    def __getitem__(self, key: str) -> np.ndarray:
+        """
+        Retrieve the complete dataset for a given key by loading and concatenating all chunks.
+
+        Args:
+            key: Dataset identifier
+
+        Returns:
+            Complete numpy array for the key
+        """
+        if key not in self.chunk_counts:
+            raise KeyError(f"Key '{key}' not found")
+
+        chunks = []
+
+        # Load all saved chunks
+        for i in range(self.chunk_counts[key]):
+            chunk = self._load_chunk(key, i)
+            if chunk is not None:
+                chunks.append(chunk)
+
+        # Add buffered data if it exists
+        if key in self.buffers:
+            chunks.append(self.buffers[key])
+
+        if not chunks:
+            raise ValueError(f"No data found for key '{key}'")
+
+        # Concatenate all chunks
+        return np.concatenate(chunks, axis=0)
+
+    def close(self):
+        """
+        Save any remaining buffered data as final chunks.
+        """
+        for key, buffer in self.buffers.items():
+            if buffer.size > 0:  # Only save non-empty buffers
+                self._save_chunk(key, buffer)
+
+        # Clear buffers after saving
+        self.buffers.clear()
+
+    def keys(self) -> list:
+        """Return list of all dataset keys."""
+        return list(self.chunk_counts.keys())
+
+    def get_info(self, key: str) -> dict:
+        """
+        Get information about a dataset.
+
+        Args:
+            key: Dataset identifier
+
+        Returns:
+            Dictionary with dataset information
+        """
+        if key not in self.chunk_counts:
+            raise KeyError(f"Key '{key}' not found")
+
+        info = {
+            'key': key,
+            'num_chunks': self.chunk_counts[key],
+            'buffered_size': self.buffers[key].shape[0] if key in self.buffers else 0,
+        }
+
+        # Get shape info from first chunk or buffer
+        sample = None
+        if self.chunk_counts[key] > 0:
+            sample = self._load_chunk(key, 0)
+        elif key in self.buffers:
+            sample = self.buffers[key]
+
+        if sample is not None:
+            info['shape'] = sample.shape[1:]  # Shape excluding first dimension
+            info['dtype'] = sample.dtype
+
+        return info
+
+    def __len__(self) -> int:
+        """Return number of datasets."""
+        return len(self.chunk_counts)
+
+    def __contains__(self, key: str) -> bool:
+        """Check if key exists in the dataset."""
+        return key in self.chunk_counts
+
+    def __repr__(self) -> str:
+        return f"ArrayIO(dir='{self.dir}', chunk_size={self.chunk_size}, datasets={len(self)})"
