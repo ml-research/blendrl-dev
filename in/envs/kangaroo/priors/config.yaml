@@ -1,0 +1,61 @@
+env:
+  name: Kangaroo
+scene:
+  width: 160
+  height: 210
+  player:
+    width: 8
+    height: 24
+  object_groups:
+    - type: ladder
+      width: 8
+      height: 35
+      objects:
+        - x: 109
+          y: 32
+        - x: 16
+          y: 80
+        - x: 109
+          y: 128
+    - type: platform
+      width: 128
+      height: 4
+      objects:
+        - x: 16
+          y: 28
+        - x: 16
+          y: 76
+        - x: 16
+          y: 124
+        - x: 16
+          y: 172
+    - type: monkey
+      width: 6
+      height: 15
+    - type: thrown coconut
+      width: 2
+      height: 3
+grid:
+  rows: 17
+  columns: 17
+predicates:
+  - object_type: ladder
+    description: "left of"
+    action: go right
+    purpose: reach the ladder
+  - object_type: ladder
+    description: "right of"
+    action: go left
+    purpose: reach the ladder
+  - object_type: ladder
+    description: "on"
+    action: go up
+    purpose: climb up the ladder
+  - object_type: monkey
+    description: "close by"
+    action: shoot or hit
+    purpose: kill the monkey
+  - object_type: thrown coconut
+    description: "close by"
+    action: dodge
+    purpose: avoid getting hit by the thrown coconut

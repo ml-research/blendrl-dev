@@ -1,0 +1,36 @@
+You are playing an ATARI game called {{ env.name }} using the gym library.
+In the following, you are provided a description of the objects and their dimensions in the scene.
+The scene's origin (x=0, y=0) is in the top left corner.
+The provided positions of each object specify the top left corner of those objects.
+The whole scene has a width of {{ scene.width }} and a height of {{ scene.height }} points.
+The player has a width of {{ scene.player.width }} and a height of {{ scene.player.height }} points.
+{% for object_group in scene.object_groups -%}
+Each {{ object_group.type }} has a width of {{ object_group.width }} and a height of {{ object_group.height }} points.
+{% for object in object_group.objects -%}
+{{ object_group.type | capitalize }} {{ loop.index }} is positioned at x={{ object.x }}, y={{ object.y }}.
+{% endfor %}
+{%- endfor %}
+Assume a grid with {{ grid.rows }} rows and {{ grid.columns }} columns that are distributed equidistantly per dimension
+and range from -{{ scene.width }} to {{ scene.width }} in the x dimension and from -{{ scene.height }} to {{ scene.height }} in the y dimension.
+For instance, the point in the first row and first column corresponds to x=-{{ scene.width }}, y=-{{ scene.height }}.
+The point in the first row and last column corresponds to x={{ scene.width }}, y=-{{ scene.height }}.
+The point in the second row and second column corresponds to x={{ 2 * scene.width }}/{{ grid.columns - 1 }}-{{ scene.width }}={{ (2 * scene.width) / (grid.columns - 1) - scene.width }}, y={{ 2 * scene.height }}/{{ grid.rows - 1 }}-{{ scene.height }}={{ (2 * scene.height) / (grid.rows - 1) - scene.height }}.
+{%- if (grid.rows % 2) == 1 and (grid.columns % 2) == 1 %}
+The point in the {{ grid.rows // 2 + 1 }}-th row and {{ grid.columns // 2 + 1 }}-th column corresponds to x=0, y=0.
+{% endif -%}
+Each grid point corresponds to the offset between the player and a {{ predicate.object_type }} in the scene.
+For example, if the grid point is x=50, y=30 and a {{ predicate.object_type }} is positioned at x=10, y=10, the player is at x=10+50=60, y=10+30=40.
+For an arbitrary {{ predicate.object_type }} in the scene (no matter where it might be positioned), think of the spatial relationship between the player and that {{ predicate.object_type }}.
+Decide for each grid point (that is, each player's offset to that {{ predicate.object_type }}), if the player
+is {{ predicate.description }} the {{ predicate.object_type }} such that the player is able to {{ predicate.action }} to {{ predicate.purpose }}.
+It is important that the player must be able to achieve its goal given how the scene and the objects within the scene are specified!
+Output your decision as an array of arrays and assign each grid point a value of
+0.0 if the property does not hold, 0.5 if you are unsure and 1.0 if the property holds.
+Think for a while and consider the game mechanics of {{ env.name }}.
+Justify your answer by reflecting if your answer enables the player to achieve its goal given the provided structure of the scene.
+End your answer with "RESULT:" followed by the array.
+Example:
+RESULT:
+[[{% for _ in range(grid.columns) %}{{ [0.0, 0.5, 1.0] | random }}{% if not loop.last %}, {% endif %}{% endfor %}],
+...,
+[1.0, ...]]

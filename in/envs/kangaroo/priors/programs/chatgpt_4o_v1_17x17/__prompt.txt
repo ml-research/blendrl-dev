@@ -1,0 +1,22 @@
+You are playing an ATARI game called Kangaroo.
+You are the player with a size of 8x24 points.
+There are ladders in the game with a size of 8x35 points.
+The whole game scene has a size of 320x420 points.
+Now imagine a ladder being in the center of the scene.
+Also imagine a 17x17 grid spread across the whole scene.
+The player can be located in each grid cell.
+Decide for each grid cell, if you think that the player (if it was located in that cell),
+is [(predicate) left of | right of | on] the ladder such that the player is able to go [(action) right | left | up] to [(reason) reach the ladder | reach the ladder | climb the ladder up].
+Output your decision as an array of arrays and assign each cell a value of
+0.0 if you do not think so, 0.5 if you are unsure and 1.0 if you think so.
+Think for a while and consider the game mechanics of the game.
+Justify your answer by reflecting if your answer enables the player to achieve its goal
+in that scene given how other objects in Kangaroo are typically placed.
+Assume a usual game scene where the ladder happens to be naturally placed in the center.
+End your answer with „RESULT:“ followed by the array.
+Example:
+
+RESULT:
+[[0, 0, 0, 0, 0, 0, 0, 0, 0],
+...,
+[1.0, ...]]

@@ -1,0 +1,37 @@
+You are playing an ATARI game called Kangaroo using the gym library.
+In the following, you are provided a description of the objects and their dimensions in the scene.
+The scene's origin (x=0, y=0) is in the top left corner.
+The provided positions of each object specify the top left corner of those objects.
+The whole scene has a width of 160 and a height of 210 points.
+The player has a width of 8 and a height of 24 points.
+There are ladders, each with a width of 8 and a height of 35 points.
+Ladder 1 is positioned at x=109, y=32.
+Ladder 2 is positioned at x=16, y=80.
+Ladder 3 is positioned at x=109, y=128.
+There are platforms, each with a width of 128 and a height of 4 points.
+Platform 1 is positioned at x=16, y=28.
+Platform 2 is positioned at x=16, y=76.
+Platform 3 is positioned at x=16, y=124.
+Platform 4 is positioned at x=16, y=172.
+Assume a grid with 17 rows and 17 columns that are distributed equidistantly per dimension
+and range from -160 to 160 in the x dimension and from -210 to 210 in the y dimension.
+For instance, the point in the first row and first column corresponds to x=-160, y=-210.
+The point in the first row and last column corresponds to x=160, y=-210.
+The point in the second row and second column corresponds to x=320/16-160=-140, y=420/16-210=-183.75.
+The point in the ninth row and ninth column corresponds to x=0, y=0.
+Each grid point corresponds to the offset between the player and a ladder in the scene.
+For example, if the grid point is x=50, y=30 and a ladder is positioned at x=10, y=10, the player is at x=10+50=60, y=10+30=40.
+Choose any ladder in the scene and think of the spatial relationship between the player and that ladder.
+Decide for each grid point (that is, each player's offset to that ladder), if the player
+is [(predicate) left of | right of | on] the ladder such that the player is able to go [(action) right | left | up] to [(reason) reach the ladder | reach the ladder | climb the ladder up].
+It is important that the player must be able to achieve its goal given how the scene and the objects within the scene are specified!
+Output your decision as an array of arrays and assign each grid point a value of
+0.0 if the property does not hold, 0.5 if you are unsure and 1.0 if the property holds.
+Think for a while and consider the game mechanics of Kangaroo.
+Justify your answer by reflecting if your answer enables the player to achieve its goal given the provided structure of the scene.
+End your answer with "RESULT:" followed by the array.
+Example:
+RESULT:
+[[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 0.5, 0.5, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+...,
+[1.0, ...]]
