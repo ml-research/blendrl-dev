@@ -1,19 +1,61 @@
 #!/bin/bash
 
-VALUATION_MODEL_TYPE="dlgn"
-EXTRA_ARGS="--valuation-model.hidden-sizes 256 256 256 256 256"
-#EXTRA_ARGS="--valuation-model.static-predicates on_ladder right_of_ladder on_pl_ladder on_pl_player close_by_fruit close_by_bell close_by_monkey close_by_throwncoconut close_by_fallingcoconut nothing_around same_level_ladder"
-NR="004"
-CUDA_DEVICES="1"
-NUM_ENVS=96
-START_SEED=0
+VALUATION_MODEL_TYPE="mlp"
+
+# logic
+#EXTRA_ARGS="--env-max-ep-steps 3000 --extra-env-modifications disable_monkeys --actor-mode logic --reward-fn goal_with_step_penalty --blend-ent-coef 0 --concept-coef 0.01"
+# blender
+EXTRA_ARGS="--actor-mode hybrid --reward-fn default --reset-logic-actor --learn-logic-actor --reset-blending-weights --learn-blending-weights --concept-coef 0.01"
+
+NR="105_gpt"
+CUDA_DEVICES="0"
+NUM_ENVS=128
 END_SEED=3
+START_SEED=0
+
+# LLM-based oracle
+ORACLE="fixed-static" # comment line to disable oracle
+#ORACLE_PROGRAM="claude_4sonnet_v3_17x17"
+ORACLE_PROGRAM="chatgpt_4o_v3_17x17"
+
+# Static oracle
+#ORACLE="relative-static"
+
+# left
+#STATIC_PREDICATES="right_of_ladder on_ladder close_by_monkey close_by_throwncoconut nothing_around"
+
+# left + right
+#STATIC_PREDICATES="on_ladder close_by_monkey close_by_throwncoconut nothing_around"
+
+# left + right + up
+#STATIC_PREDICATES="close_by_monkey close_by_throwncoconut nothing_around"
+
+# left + right + up + close_by_*
+STATIC_PREDICATES="nothing_around"
+
+VALMODEL_ARGS="--valuation-model.static-predicates ${STATIC_PREDICATES} --valuation-model.discard-missing-objects --valuation-model.use-position-difference"
+
+
+# Oracle Args
+if [[ -v ORACLE ]]; then
+  ORACLE_EXTRA_ARGS=""
+  if [[ -v ORACLE_PROGRAM ]]; then
+      ORACLE_EXTRA_ARGS="--oracle-model.program ${ORACLE_PROGRAM}"
+  fi
+  ORACLE_ARGS="oracle-model:${ORACLE} --oracle-model.static-predicates ${STATIC_PREDICATES} ${ORACLE_EXTRA_ARGS}"
+else
+  ORACLE_ARGS=""
+fi
 
 # Args
 DEFAULT_ARGS="--wandb-entity ${WANDB_TEAM} \
---env-name kangaroo --num-steps 128 --track --recover --save-steps 10000 \
+--rules small --env-frameskip 4 \
+--learn-logic-critic --reset-logic-critic --randomize-start-position --log-heatmaps-steps 200000 --save-train-data \
+--env-name kangaroo --track --num-steps 128 --recover --save-steps 10000 --total-timesteps 20000000 \
 --num-envs ${NUM_ENVS} \
-valuation-model:${VALUATION_MODEL_TYPE} ${EXTRA_ARGS}"
+${EXTRA_ARGS:-} \
+valuation-model:${VALUATION_MODEL_TYPE} ${VALMODEL_ARGS:-} \
+${ORACLE_ARGS}"
 
 # Experiment name
 BASE_EXPERIMENT_NAME="${VALUATION_MODEL_TYPE}_${NR}"
@@ -43,7 +85,7 @@ for ((SEED=START_SEED; SEED<END_SEED; SEED++)); do
     -v $PARENT_DIR:/app \
     --gpus ${DOCKER_GPUS} \
     --ipc=host --ulimit stack=67108864 \
-    --restart unless-stopped \
+    --restart on-failure \
     --name "${EXPERIMENT_NAME}" \
     -e WANDB_API_KEY="${WANDB_API_KEY}" \
     -e WANDB_TEAM="${WANDB_TEAM}" \
