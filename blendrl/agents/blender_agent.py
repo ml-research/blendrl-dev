@@ -390,6 +390,7 @@ class BlenderActorCritic(nn.Module):
         rng=None,
         explain=False,
         valuation_model=None,
+        logic_critic_use_only_player_pos=False
     ):
         super(BlenderActorCritic, self).__init__()
         self.device = device
@@ -437,7 +438,7 @@ class BlenderActorCritic(nn.Module):
                 valuation_model=self.valuation_model,
             )
         # self.logic_actor = get_nsfr_model(env.name, rules, device=device, train=True)
-        self.logic_critic = module.MLP(device=device, out_size=1, logic=True)
+        self.logic_critic = module.MLP(device=device, out_size=1, logic=True, only_player_pos=logic_critic_use_only_player_pos)
         self.actor = BlenderActor(
             env,
             self.visual_neural_actor,

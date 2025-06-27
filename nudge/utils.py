@@ -14,7 +14,7 @@ from blendrl.env_vectorized import VectorizedNudgeBaseEnv
 from nsfr.nsfr import NSFReasoner
 from nsfr.utils.torch import softor
 from nudge.env import NudgeBaseEnv
-from utils import optional
+from utils import optional, load_model_state
 
 
 def to_proportion(dic):
@@ -126,12 +126,23 @@ def load_model(model_dir,
         model = BlenderActorCritic(
             env, rules=rules, actor_mode=config["actor_mode"], blender_mode=config["blender_mode"],
             blend_function=config["blend_function"], reasoner=reasoner, device=device, explain=explain,
-            valuation_model=valuation_model
+            valuation_model=valuation_model, logic_critic_use_only_player_pos=config["logic_critic_use_only_player_pos"]
         ).to(device)
 
     # Load the model weights
-    with open(checkpoint_path, "rb") as f:
-        model.load_state_dict(state_dict=torch.load(f, map_location=torch.device('cpu'), weights_only=True), strict=False)
+    try:
+        exclude_prefixes = []
+        if config["reset_logic_critic"]:
+            exclude_prefixes.append("logic_critic.")
+        if config["reset_blending_weights"]:
+            exclude_prefixes.extend(["actor.blender.im", "blender.im."])
+        if config["reset_logic_actor"]:
+            exclude_prefixes.extend(["actor.logic_actor.", "logic_actor."])
+        load_model_state(checkpoint_path, model, exclude_prefixes=exclude_prefixes)
+    except:
+        assert False, (f"Failed to load model from {checkpoint_path}. "
+                       f"Make sure that the logic critic of the specified 'agent_path' or 'logic_critic_path' has "
+                       f"the same configuration for 'logic_critic_use_only_player_pos'.")
 
     return model
 
