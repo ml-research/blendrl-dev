@@ -1,13 +1,19 @@
+from io import BytesIO
 from pathlib import Path
 from typing import Optional, Union, TypeAlias, List, Tuple, Any
 
 import torch as th
+from PIL import Image
+from matplotlib.collections import LineCollection
 from matplotlib.image import AxesImage
 from matplotlib.legend import Legend
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.colors import Colormap
 from matplotlib.patches import Patch
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from scipy.stats import binned_statistic_2d
+import imageio.v2 as iio
 
 from utils import to_np, FRAME_SIZE
 from valuation.models.base import BaseValuationModel
@@ -23,9 +29,18 @@ def get_cmap(cmap: Cmap, masked_color=None) -> Colormap:
 
     return cmap
 
-def create_heatmap_fig(H: np.ndarray, cmap: Optional[Colormap] = None, *args, **kwargs) -> (plt.Figure, plt.Axes, AxesImage):
+def create_heatmap_fig(
+        H: np.ndarray,
+        cmap: Optional[Colormap] = None,
+        ax: Optional[plt.Axes] = None,
+        *args,
+        **kwargs
+) -> (plt.Figure, plt.Axes, AxesImage):
     # Create figure
-    fig, ax = plt.subplots()
+    if ax is None:
+        fig, ax = plt.subplots()
+    else:
+        fig = ax.get_figure()
 
     # Plot image
     im = ax.imshow(H, cmap=cmap, *args, **kwargs)
@@ -35,6 +50,125 @@ def create_heatmap_fig(H: np.ndarray, cmap: Optional[Colormap] = None, *args, **
     ax.set_yticks([])
 
     return fig, ax, im
+
+def mask_array(arr: np.ndarray, value: float) -> np.ndarray:
+    if np.isnan(value):
+        return np.ma.masked_where(np.isnan(arr), arr)
+
+    return np.ma.masked_where(arr == value, arr)
+
+def create_prior_fig(positions: np.ndarray, values: np.ndarray) -> (plt.Figure, plt.Axes):
+
+    fig, ax = plt.subplots(figsize=(6, 6))
+
+    # Set limits and aspect
+    ax.set_xlim(-1, 1)
+    ax.set_ylim(1, -1)
+    ax.set_aspect('equal', adjustable='box')
+
+    # Remove axis labels
+    ax.set_xticks(np.arange(-1, 1.01, 0.25))
+    ax.set_yticks(np.arange(-1, 1.01, 0.25))
+    ax.set_xticklabels([])
+    ax.set_yticklabels([])
+    ax.tick_params(left=False, bottom=False, top=False, right=False)
+
+    # Add grid lines
+    ax.grid(True, which='both', linestyle='--', linewidth=0.5, color='gray')
+
+    # Plot positions
+    x = positions[:, 0]
+    y = positions[:, 1]
+    scatter = ax.scatter(x, y, c=values, cmap='binary', s=50, marker='s', edgecolors='w', vmin=0, vmax=1, linewidths=0.2)
+
+    # Mark the origin
+    ax.plot(0, 0, marker='x', color='black', markersize=10)
+
+    fig.tight_layout()
+
+    return fig, ax
+
+
+def make_segments(x, y):
+    '''
+    Create list of line segments from x and y coordinates, in the correct format for LineCollection:
+    an array of the form numlines x (points per line) x 2 (x and y) array
+    '''
+
+    points = np.array([x, y]).T.reshape(-1, 1, 2)
+    segments = np.concatenate([points[:-1], points[1:]], axis=1)
+
+    return segments
+
+def colorline(x, y, z=None, cmap=plt.get_cmap('copper'), norm=plt.Normalize(0.0, 1.0), linewidth=1.0, alpha=1.0, ax=None):
+    '''
+    Plot a colored line with coordinates x and y
+    Optionally specify colors in the array z
+    Optionally specify a colormap, a norm function and a line width
+    '''
+
+    # Default colors equally spaced on [0,1]:
+    if z is None:
+        z = np.linspace(0.0, 1.0, len(x))
+
+    # Special case if a single number:
+    if not hasattr(z, "__iter__"):  # to check for numerical input -- this is a hack
+        z = np.array([z])
+
+    z = np.asarray(z)
+
+    segments = make_segments(x, y)
+    lc = LineCollection(segments, array=z, cmap=cmap, norm=norm, linewidth=linewidth, alpha=alpha)
+
+    if ax is None:
+        ax = plt.gca()
+    ax.add_collection(lc)
+
+    return lc
+
+def create_multipath_fig(coords: List[np.array], frame_size: (float, float), moving_average: int = 1, ax: Optional[plt.Axes] = None, cmap: Optional[Colormap] = plt.get_cmap('RdYlGn_r'), *args, **kwargs) -> (plt.Figure, plt.Axes):
+    if ax is None:
+        fig, ax = plt.subplots()
+    else:
+        fig = ax.get_figure()
+
+    ax.set_xlim(0, frame_size[0])
+    ax.set_ylim(frame_size[1], 0)
+    ax.set_aspect('equal', adjustable='box')
+
+    for path in coords:
+        if moving_average > 1:
+            # path = np.apply_along_axis(
+            #     lambda a: np.convolve(a, np.ones(moving_average) / moving_average, mode='valid'),
+            #     axis=0, arr=path
+            # )
+            path = path[::moving_average]
+        x, y = path[:, 0], path[:, 1]
+
+        if cmap is None:
+            ax.plot(x, y, c='black', linewidth=0.5)
+        else:
+            colorline(x, y, cmap=cmap, linewidth=0.5, ax=ax)
+
+    ax.set_xticks([])
+    ax.set_yticks([])
+
+    fig.tight_layout()
+
+    return fig, ax
+
+
+def fig_to_rgb(fig: plt.Figure) -> np.ndarray:
+    canvas = FigureCanvas(fig)  # Bind canvas to figure
+    canvas.draw()  # Render the figure
+
+    # Get the RGBA buffer from the canvas
+    buf = np.asarray(canvas.buffer_rgba())
+
+    # Drop the alpha channel
+    rgb = buf[:, :, :3]
+
+    return rgb
 
 def fig_add_legend(fig: plt.Figure, labels: List[Tuple[str, Any]]) -> Legend:
     ax = fig.gca()
@@ -55,6 +189,15 @@ def fig_add_legend(fig: plt.Figure, labels: List[Tuple[str, Any]]) -> Legend:
     )
 
     return legend
+
+def get_heatmap(x: np.ndarray, y: np.ndarray, values: np.ndarray, bins: (int, int), range: ((float, float), (float, float)), mode: str = "mean") -> np.ndarray:
+    heatmap, _, _, _ = binned_statistic_2d(
+        x, y, values,
+        statistic=mode,
+        bins=bins,
+        range=range
+    )
+    return heatmap
 
 def fig_add_title(fig: plt.Figure, title: str, subtitle: Optional[str] = None) -> (plt.Text, Optional[plt.Text]):
     ax = fig.gca()
@@ -119,3 +262,34 @@ def get_logic_critic_heatmap(logic_critic: th.nn.Module, player_input: th.Tensor
     heatmap = to_np(output).T
 
     return heatmap
+
+
+class Animator:
+
+    def __init__(self, fig: plt.Figure, path: Path, fps: float = 25, codec: str = 'libx264', quality: int = 8, dpi: int = 150):
+        self.fig = fig
+        self.path = path
+        self.fps = fps
+        self.codec = codec
+        self.quality = quality
+        self.dpi = dpi
+
+        self._writer = iio.get_writer(
+            self.path,
+            fps=self.fps,
+            codec=self.codec,
+            quality=self.quality,  # Quality (lower is better; 0-10 range)
+        )
+
+    def append(self):
+        buf = BytesIO()
+        self.fig.savefig(buf, dpi=self.dpi, format='png', bbox_inches='tight')
+        buf.seek(0)
+        img = np.array(Image.open(buf).convert("RGB"))
+        self._writer.append_data(img)
+
+    def save_still(self, path: Path):
+        save_fig(self.fig, path, close_fig=False)
+
+    def close(self):
+        self._writer.close()

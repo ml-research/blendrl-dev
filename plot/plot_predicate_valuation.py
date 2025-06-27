@@ -1,27 +1,30 @@
 import logging
 import os
-from io import BytesIO
-from typing import List
+from collections import defaultdict
+from typing import List, Literal, get_args
 
-import imageio.v2 as iio
-import numpy as np
 import torch as th
 import tyro
-from PIL import Image
 from dataclasses import dataclass, field
 from matplotlib import pyplot as plt, patches
+from matplotlib.colors import ListedColormap
 from tqdm import tqdm
 
 from nudge.env import NudgeBaseEnv
 from nudge.utils import get_objs
 from plot.plot_utils import get_cmap, create_heatmap_fig, fig_add_title, save_fig, get_predicate_heatmaps, \
-    get_logic_critic_heatmap, discretize_frame
+    get_logic_critic_heatmap, discretize_frame, Animator
 from utils import get_default_device, FRAME_SIZE, load_model_state
 from valuation.experiment import ValuationExperiment
 
 logging.getLogger('imageio_ffmpeg').setLevel(logging.ERROR)
 
-CMAP = get_cmap('jet')
+PREDICATE_CMAP = get_cmap('jet')
+LOGIC_CRITIC_CMAP = get_cmap('gist_ncar')
+DIVERGENT_CMAP = get_cmap('RdYlGn')
+DIFFERENCE_CMAP = get_cmap('RdBu_r')
+
+PlotType = Literal["all", "logic_critic", "valuation", "valuation_overlay", "oracle_diff", "oracle_diff_overlay"]
 
 @dataclass
 class Args:
@@ -34,8 +37,6 @@ class Args:
        1=top left corner, 5=center, 9 bottom right corner. If [Object Category]_[i], 
        the position of the i-th object of the specified category in the environment will be used, e.g.,
        Ladder_1=position of the first ladder."""
-    overlay_positions: bool = False
-    """Whether a heatmap shall be created that overlays the heatmaps of all positions"""
     contour_objects: List[str] = field(default_factory=lambda: [])
     """Object categories that shall be plotted as contours in the heatmaps"""
     checkpoint: List[int] = field(default_factory=lambda: [])
@@ -45,9 +46,10 @@ class Args:
     save_all_checkpoints: bool = False
     """Whether to save all checkpoints (excluding skipped ones) as still plots. 
        If set, the checkpoint argument will be ignored."""
+    logic_critic_extra_objects: List[str] = field(default_factory=lambda: [])
+    """Extra objects placed in the center of the scene when plotting the values of the logic critic"""
 
-    plot_logic_critic: bool = False
-    """Whether to additionally plot the values of the logic critic"""
+    plots: List[PlotType] = field(default_factory=lambda: ["all"])
 
     fps: int = 25
     """FPS of the animations"""
@@ -61,6 +63,11 @@ def main():
     args = tyro.cli(Args)
 
     device = get_default_device()
+    plot_all = "all" in args.plots
+    plot = {
+        literal: plot_all or (literal in args.plots)
+        for literal in get_args(PlotType)
+    }
 
     for exp_name in args.exp_name:
 
@@ -68,6 +75,11 @@ def main():
         experiment = ValuationExperiment.from_name(exp_name)
         agent = experiment.get_model(device, load_from_latest_checkpoint=False)
         valuation_model = agent.valuation_model
+        oracle_model = experiment.get_oracle(device)
+        plot_oracle_diff = plot["oracle_diff"] or plot["oracle_diff_overlay"]
+        if plot_oracle_diff and oracle_model is None:
+            print(f"Experiment {exp_name} has no oracle.")
+            plot_oracle_diff = False
 
         # Load environment
         env = NudgeBaseEnv.from_name(experiment.env_name, mode=experiment.config.algorithm, **experiment.env_config)
@@ -93,9 +105,9 @@ def main():
         object_inputs = []
         for position in args.position:
             if position.isdigit():
-                position = int(position)
-                x_mul = 0.25 * ((position + 2) % 3 + 1)
-                y_mul = 0.25 * ((position + 2) // 3)
+                int_position = int(position)
+                x_mul = 0.25 * ((int_position + 2) % 3 + 1)
+                y_mul = 0.25 * ((int_position + 2) // 3)
                 obj_pos = (frame_size[0] * x_mul, frame_size[1] * y_mul)
             else:
                 obj_type, obj_index = position.split("_")
@@ -120,9 +132,25 @@ def main():
             objs = get_objs(env, category)
             obj_overlays.extend([obj.xywh for obj in objs])
 
+        # Determine oracle heatmap
+        oracle_heatmaps = defaultdict(list)
+        if plot_oracle_diff:
+            oracle_heatmaps = {
+                predicate_name: get_predicate_heatmaps(
+                    oracle_model,
+                    predicate_name,
+                    player_input,
+                    [oi[1] for oi in object_inputs],
+                    grid_shape,
+                    include_overlay=plot["oracle_diff_overlay"]
+                )
+                for predicate_name in args.predicate_name
+            }
+
+
         # Initialize figures and animations
         artists = []
-        writers = []
+        animators: List[Animator] = []
 
         # Iterate all checkpoints to create still heatmaps
         for checkpoint in tqdm(checkpoints):
@@ -135,27 +163,31 @@ def main():
                 heatmaps = []  # list of dicts (name, position, heatmap, object positions)
                 subtitle = f"{exp_name} (step {checkpoint.step})"
 
-                load_model_state(checkpoint.path, agent, strict=False)
+                load_model_state(checkpoint.path, agent)
 
                 for predicate_name in args.predicate_name:
-                    predicate_heatmaps = get_predicate_heatmaps(
-                        valuation_model,
-                        predicate_name,
-                        player_input,
-                        [oi[1] for oi in object_inputs],
-                        grid_shape,
-                        include_overlay=args.overlay_positions
-                    )
-                    heatmaps.extend([{
-                        "name": predicate_name,
-                        "position": oi[0],
-                        "heatmap": hm,
-                        "obj_positions": [oi[2]],
-                        "vmin": 0,
-                        "vmax": 1,
-                    } for oi, hm in zip(object_inputs, predicate_heatmaps)])
+                    if plot["valuation"] or plot["valuation_overlay"] or plot["oracle_diff"] or plot["oracle_diff_overlay"]:
+                        predicate_heatmaps = get_predicate_heatmaps(
+                            valuation_model,
+                            predicate_name,
+                            player_input,
+                            [oi[1] for oi in object_inputs],
+                            grid_shape,
+                            include_overlay=plot["valuation_overlay"] or plot["oracle_diff_overlay"]
+                        )
 
-                    if args.overlay_positions:
+                    if plot["valuation"]:
+                        heatmaps.extend([{
+                            "name": predicate_name,
+                            "position": oi[0],
+                            "heatmap": hm,
+                            "obj_positions": [oi[2]],
+                            "vmin": 0,
+                            "vmax": 1,
+                            "cmap": PREDICATE_CMAP
+                        } for oi, hm in zip(object_inputs, predicate_heatmaps)])
+
+                    if plot["valuation_overlay"]:
                         heatmaps.append({
                             "name": predicate_name,
                             "position": "all",
@@ -163,9 +195,37 @@ def main():
                             "obj_positions": [oi[2] for oi in object_inputs],
                             "vmin": 0,
                             "vmax": 1,
+                            "cmap": PREDICATE_CMAP
                         })
 
-                if args.plot_logic_critic:
+                    if plot["oracle_diff"] or plot["oracle_diff_overlay"]:
+                        oracle_diff_heatmaps = [predicate_hm - oracle_hm for predicate_hm, oracle_hm in zip(predicate_heatmaps, oracle_heatmaps[predicate_name])]
+
+                    if plot["oracle_diff"]:
+                        heatmaps.extend([{
+                            "name": f"{predicate_name} (diff to oracle)",
+                            "position": oi[0],
+                            "heatmap": hm,
+                            "obj_positions": [oi[2]],
+                            "vmin": -1,
+                            "vmax": 1,
+                            "cmap": DIFFERENCE_CMAP,
+                            "filename": f"oracle_diff_{predicate_name}"
+                        } for oi, hm in zip(object_inputs, oracle_diff_heatmaps)])
+
+                    if plot["oracle_diff_overlay"]:
+                        heatmaps.append({
+                            "name": f"{predicate_name} (diff to oracle)",
+                            "position": "all",
+                            "heatmap": oracle_diff_heatmaps[-1],
+                            "obj_positions": [oi[2] for oi in object_inputs],
+                            "vmin": -1,
+                            "vmax": 1,
+                            "cmap": DIFFERENCE_CMAP,
+                            "filename": f"oracle_diff_{predicate_name}"
+                        })
+
+                if plot["logic_critic"]:
                     heatmap = get_logic_critic_heatmap(agent.logic_critic, player_input, logic_critic_input, grid_shape)
                     heatmaps.append({
                         "name": "logic_critic",
@@ -174,14 +234,53 @@ def main():
                         "obj_positions": [],
                         "vmin": None,
                         "vmax": None,
+                        "cmap": LOGIC_CRITIC_CMAP
                     })
+
+                    for lc_extra_object in args.logic_critic_extra_objects:
+                        lc_input = logic_critic_input.clone()
+                        obj_index = env.obj_offsets.get(lc_extra_object)
+                        if obj_index is None:
+                            continue
+                        obj_pos = (int(frame_size[0] * 0.5), int(frame_size[1] * 0.5))
+                        lc_input[:, obj_index] = th.tensor([1, *obj_pos, 0], device=device)
+
+                        heatmap = get_logic_critic_heatmap(agent.logic_critic, player_input, lc_input, grid_shape)
+                        heatmaps.append({
+                            "name": "logic_critic",
+                            "position": "5",
+                            "heatmap": heatmap,
+                            "obj_positions": [obj_pos],
+                            "vmin": None,
+                            "vmax": None,
+                            "cmap": LOGIC_CRITIC_CMAP,
+                            "filename": f"logic_critic_{lc_extra_object}"
+                        })
+
+
+                    # v_heatmap = heatmap[:-1] - heatmap[1:]
+                    # h_heatmap = heatmap[:, 1:] - heatmap[:, :-1]
+                    # for heatmap_suffix, heatmap in (("v", v_heatmap), ("h", h_heatmap)):
+                    #     vabsmax = np.abs(heatmap).max()
+                    #     heatmaps.append({
+                    #         "name": "logic_critic_" + heatmap_suffix,
+                    #         "position": None,
+                    #         "heatmap": heatmap,
+                    #         "obj_positions": [],
+                    #         "vmin": -vabsmax,
+                    #         "vmax": vabsmax,
+                    #         "cmap": DIVERGENT_CMAP
+                    #     })
 
                 # Iterate all heatmaps
                 for i, info in enumerate(heatmaps):
+
+                    filename = info.get("filename", info["name"]) + (f"_{info['position']}" if info['position'] is not None else "")
+
                     # Initialize figures and animations
                     if len(artists) < len(heatmaps):
                         # Draw heatmap
-                        fig, ax, im = create_heatmap_fig(info["heatmap"], CMAP, vmin=info["vmin"], vmax=info["vmax"], extent=(0, frame_size[0], frame_size[1], 0))
+                        fig, ax, im = create_heatmap_fig(info["heatmap"], info["cmap"], vmin=info["vmin"], vmax=info["vmax"], extent=(0, frame_size[0], frame_size[1], 0))
 
                         # Draw object positions
                         for obj_grid_pos in info["obj_positions"]:
@@ -213,20 +312,9 @@ def main():
                             "subtitle": subtitle_text,
                         })
 
-                        animation_filename = info["name"]
-                        if info.get("position") is not None:
-                            animation_filename += "_" + info["position"]
-                        animation_path = plots_dir / (animation_filename + ".mp4")
-                        writer = iio.get_writer(
-                            animation_path,
-                            fps=args.fps,
-                            codec='libx264',
-                            quality=8,  # Quality (lower is better; 0-10 range)
-                        )
-                        writers.append({
-                            "writer": writer,
-                            "path": animation_path,
-                        })
+                        animation_path = plots_dir / (filename + ".mp4")
+                        animator = Animator(fig, animation_path, args.fps)
+                        animators.append(animator)
 
                     artist = artists[i]
                     hm = info["heatmap"]
@@ -238,11 +326,11 @@ def main():
                     )
                     artist["subtitle"].set_text(subtitle)
 
-                    writer = writers[i]["writer"]
+                    animator = animators[i]
                     fig = artist["fig"]
 
                     if is_still_frame:
-                        still_filename = info["name"] + (f"_{info['position']}" if info['position'] is not None else "")
+                        still_filename = filename
                         if checkpoint.step != checkpoints[-1].step:
                             still_filename += f"_{checkpoint.step}"
                         still_path = plots_dir / f"{still_filename}.png"
@@ -251,17 +339,13 @@ def main():
                         print(f"Checkpoint {checkpoint.step} saved at {still_path}")
 
                     if is_animation_frame:
-                        buf = BytesIO()
-                        fig.savefig(buf, dpi=150, format='png', bbox_inches='tight')  # Tight bbox cropping here
-                        buf.seek(0)
-                        img = np.array(Image.open(buf).convert("RGB"))
-                        writer.append_data(img)
+                        animator.append()
 
-        for artist, writer in zip(artists, writers):
+        for artist, animator in zip(artists, animators):
             plt.close(artist["fig"])
 
-            writer["writer"].close()
-            print(f"Animation saved at {writer['path']}")
+            animator.close()
+            print(f"Animation saved at {animator.path}")
 
 
 
