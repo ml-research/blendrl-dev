@@ -1,12 +1,10 @@
 from typing import List
-import torch as th
 
+import torch as th
 from dataclasses import dataclass, field
 from difflogic import LogicLayer, GroupSum
 
 from nsfr.fol.language import Language
-from nsfr.fol.logic import NeuralPredicate
-from utils import optional
 from valuation.models.base import BaseValuationModelConfig, BaseValuationModel
 
 """
@@ -40,8 +38,6 @@ from valuation.models.base import BaseValuationModelConfig, BaseValuationModel
     close_by_fallingcoconut:[bbox player, bbox fallingcoconut]
     same_level_ladder:      [bbox player, bbox ladder]
 """
-
-FRAME_SIZE = (160.0, 210.0)
 
 
 @dataclass
@@ -78,10 +74,12 @@ class ValuationModelDLGN(BaseValuationModel):
 
         dlgns = dict()
 
-        for pred in self.lang.preds:
-            if isinstance(pred, NeuralPredicate) and pred.name not in self.config.static_predicates:
+        for pred in self.lang.neural_predicates:
+            if pred.name not in self.config.static_predicates:
                 module_name = pred.name
                 input_size = sum([dtype.num_features for dtype in pred.dtypes])
+                if self.config.use_position_difference:
+                    input_size -= 4
                 dlgn = ValuationDLGN(input_size=input_size, hidden_sizes=config.hidden_sizes, output_size=1, device=self.device.type)
                 dlgns[module_name] = dlgn
 
@@ -89,10 +87,6 @@ class ValuationModelDLGN(BaseValuationModel):
 
     def forward_predicate(self, predicate_name: str, input: th.Tensor) -> th.Tensor:
         dlgn = self.heads[predicate_name]
-
-        # normalize coordinates
-        input[:, 1::4] /= FRAME_SIZE[0]
-        input[:, 2::4] /= FRAME_SIZE[1]
 
         # unset orientation
         input[:, 3::4] = 0

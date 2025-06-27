@@ -14,8 +14,6 @@ class MLPConfig(BaseValuationModelConfig):
     type = "mlp"
 
     hidden_sizes: List[int] = field(default_factory=lambda: [64, 32])
-    use_position_difference: bool = False
-    discard_missing_objects: bool = False
 
 
 class ValuationMLP(th.nn.Module):
@@ -46,8 +44,8 @@ class ValuationModelMLP(BaseValuationModel):
 
         mlps = dict()
 
-        for pred in self.lang.preds:
-            if isinstance(pred, NeuralPredicate) and pred.name not in self.config.static_predicates:
+        for pred in self.lang.neural_predicates:
+            if pred.name not in self.config.static_predicates:
                 module_name = pred.name
                 input_size = sum([dtype.num_features for dtype in pred.dtypes])
                 if config.use_position_difference:
@@ -61,31 +59,4 @@ class ValuationModelMLP(BaseValuationModel):
     def forward_predicate(self, predicate_name, input):
         mlp = self.heads[predicate_name]
 
-        num_objects = input.shape[1] // 4
-
-        if self.config.discard_missing_objects:
-            indices = (input[:, list(range(4, num_objects * 4, 4))] == 1.0).any(dim=1)
-        else:
-            indices = th.ones(input.shape[0], dtype=th.bool, device=input.device)
-
-        result = th.zeros(input.shape[0], dtype=input.dtype, device=input.device)
-
-        if indices.sum() == 0:
-            return result
-
-        # compute normalized differences
-        if self.config.use_position_difference:
-            x = input[indices, 4:]
-            player_x = input[indices, 1]
-            player_y = input[indices, 2]
-
-            obj_index = 0
-            while obj_index < x.shape[1] // 4:
-                x[:, obj_index * 4 + 1] = (player_x - x[:, obj_index * 4 + 1]) / FRAME_SIZE[self.env_name][0]
-                x[:, obj_index * 4 + 2] = (player_y - x[:, obj_index * 4 + 2]) / FRAME_SIZE[self.env_name][1]
-                obj_index += 1
-        else:
-            x = input[indices]
-
-        result[indices] = mlp(x)
-        return result
+        return mlp(input)
