@@ -37,3 +37,7 @@ RUN pip install -e neumann
 # Install difflogic
 COPY third_party/difflogic third_party/difflogic
 RUN pip install -e third_party/difflogic
+
+# Install hackatari
+COPY third_party/hackatari third_party/hackatari
+RUN pip install -e third_party/hackatari

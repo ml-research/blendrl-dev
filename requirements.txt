@@ -5,7 +5,6 @@ opencv-python==4.5.5.64
 stable-baselines3
 captum
 ocatari
-hackatari @ git+https://github.com/k4ntz/HackAtari.git
 pyyaml
 tensorboard
 rtpt
