@@ -22,6 +22,3 @@ def make_env(env):
     env = gym.wrappers.GrayscaleObservation(env)
     env = gym.wrappers.FrameStackObservation(env, 4)
     return env
-
-
-seaquest_modifs = []

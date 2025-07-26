@@ -390,7 +390,7 @@ class BlenderActorCritic(nn.Module):
         rng=None,
         explain=False,
         valuation_model=None,
-        logic_critic_use_only_player_pos=False
+        gamma=0.01
     ):
         super(BlenderActorCritic, self).__init__()
         self.device = device
@@ -403,14 +403,14 @@ class BlenderActorCritic(nn.Module):
         self.explain = explain
         mlp_module_path = f"in/envs/{self.env.name}/mlp.py"
         module = load_module(mlp_module_path)
-        self.visual_neural_actor = load_cleanrl_agent(pretrained=False, device=device)
+        visual_neural_actor = load_cleanrl_agent(pretrained=False, device=device)
         self.valuation_model = valuation_model
         if reasoner == "neumann":
             from neumann.common import get_neumann_model
-            self.logic_actor = get_neumann_model(
+            logic_actor = get_neumann_model(
                 env.name, rules, device=device, train=True, explain=explain
             )
-            self.blender = get_blender(
+            blender = get_blender(
                 env,
                 rules,
                 device,
@@ -418,17 +418,19 @@ class BlenderActorCritic(nn.Module):
                 train=True,
                 explain=explain,
                 valuation_model=self.valuation_model,
+                gamma=gamma
             )
         elif reasoner == "nsfr":
-            self.logic_actor = get_nsfr_model(
+            logic_actor = get_nsfr_model(
                 env.name,
                 rules,
                 device=device,
                 train=True,
                 explain=explain,
                 valuation_model=self.valuation_model,
+                gamma=gamma
             )
-            self.blender = get_blender(
+            blender = get_blender(
                 env,
                 rules,
                 device,
@@ -436,14 +438,15 @@ class BlenderActorCritic(nn.Module):
                 train=True,
                 explain=explain,
                 valuation_model=self.valuation_model,
+                gamma=gamma
             )
         # self.logic_actor = get_nsfr_model(env.name, rules, device=device, train=True)
-        self.logic_critic = module.MLP(device=device, out_size=1, logic=True, only_player_pos=logic_critic_use_only_player_pos)
+        self.logic_critic = module.MLP(device=device, out_size=1, logic=True)
         self.actor = BlenderActor(
             env,
-            self.visual_neural_actor,
-            self.logic_actor,
-            self.blender,
+            visual_neural_actor,
+            logic_actor,
+            blender,
             actor_mode,
             blender_mode,
             blend_function,
@@ -465,6 +468,18 @@ class BlenderActorCritic(nn.Module):
                 device=device,
             )
         )
+
+    @property
+    def visual_neural_actor(self):
+        return self.actor.neural_actor
+
+    @property
+    def logic_actor(self):
+        return self.actor.logic_actor
+
+    @property
+    def blender(self):
+        return self.actor.blender
 
     def _print(self):
         """
