@@ -1,10 +1,9 @@
 from pathlib import Path
 
+import jinja2 as j2
+import tyro
 import yaml
 from dataclasses import dataclass
-
-import tyro
-import jinja2 as j2
 
 
 @dataclass
@@ -22,13 +21,13 @@ def main():
     with open(config_path, "r") as f:
         config = yaml.load(f, Loader=yaml.Loader)
 
-    prompt_path = base_dir / "prompts" / (args.prompt_name + ".j2")
+    prompt_path = Path("in/prompts") / (args.prompt_name + ".j2")
     with open(prompt_path, "r") as f:
         template = j2.Template(f.read())
 
     for predicate in config["predicates"]:
         print("=" * 80)
-        print(predicate["description"] + " " + predicate["object_type"])
+        print(predicate["name"])
         print("=" * 80)
         config["predicate"] = predicate
         print(template.render(**config))
