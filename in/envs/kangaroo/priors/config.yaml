@@ -1,5 +1,8 @@
 env:
   name: Kangaroo
+  rules_and_mechanics:
+    - "The player can move left/right and jump only when on a platform."
+    - "The player climbs up ladders to reach the platform above."
 scene:
   width: 160
   height: 210
@@ -35,27 +38,34 @@ scene:
     - type: thrown coconut
       width: 2
       height: 3
-grid:
-  rows: 17
-  columns: 17
 predicates:
-  - object_type: ladder
+  - name: "left_of_ladder"
+    object_types:
+    - ladder
     description: "left of"
     action: go right
-    purpose: reach the ladder
-  - object_type: ladder
+    purpose: go right to reach the ladder
+  - name: "right_of_ladder"
+    object_types:
+    - ladder
     description: "right of"
     action: go left
-    purpose: reach the ladder
-  - object_type: ladder
+    purpose: go left to reach the ladder
+  - name: "on_ladder"
+    object_types:
+    - ladder
     description: "on"
     action: go up
     purpose: climb up the ladder
-  - object_type: monkey
+  - name: "close_by_monkey"
+    object_types:
+    - monkey
     description: "close by"
-    action: shoot or hit
-    purpose: kill the monkey
-  - object_type: thrown coconut
+    action: throw punches
+    purpose: throw punches at the monkey
+  - name: "close_by_throwncoconut"
+    object_types:
+    - thrown coconut
     description: "close by"
     action: dodge
-    purpose: avoid getting hit by the thrown coconut
+    purpose: dodge the thrown coconut
