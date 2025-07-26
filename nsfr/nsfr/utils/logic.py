@@ -2,11 +2,9 @@ from __future__ import annotations
 
 import itertools
 
-from dataclasses import dataclass
-
 from nsfr.fol.data_utils import DataUtils
 from nsfr.fol.logic import *
-from nsfr.fol.logic import DataType, Clause
+from nsfr.fol.logic import DataType
 from nsfr.infer import InferModule, ClauseInferModule, ClauseBodyInferModule
 from nsfr.tensor_encoder import TensorEncoder
 
@@ -42,10 +40,10 @@ def get_blender_lang(lark_path, lang_base_path, dataset):
     atoms = generate_atoms(lang)
     return lang, clauses, bk, atoms
 
-def build_infer_module(clauses, atoms, lang, device, m=3, infer_step=3, train=False):
+def build_infer_module(clauses, atoms, lang, device, m=3, infer_step=3, train=False, gamma: float = 0.01):
     te = TensorEncoder(lang, atoms, clauses, device=device)
     I = te.encode()
-    im = InferModule(I, m=m, infer_step=infer_step, device=device, train=train)
+    im = InferModule(I, m=m, infer_step=infer_step, gamma=gamma, device=device, train=train)
     return im
 
 

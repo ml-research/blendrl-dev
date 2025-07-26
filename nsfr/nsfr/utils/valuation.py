@@ -1,4 +1,8 @@
+import re
+from typing import Optional
+
 import torch
+from nsfr.fol.logic import Const
 
 
 def fuzzy_position(pos1, pos2, keyword):
@@ -20,3 +24,13 @@ def fuzzy_position(pos1, pos2, keyword):
         result = torch.where((90 >= degree) & (degree >= -90), probs * 0.9, 0.)
 
     return result
+
+def get_object_index_of_const(const: Const) -> Optional[int]:
+    result = re.match("obj([1-9][0-9]*)", const.name)
+    if result is not None:
+        # The constant is an object constant
+        obj_id = result[1]
+        obj_index = int(obj_id) - 1
+        return obj_index
+
+    return None

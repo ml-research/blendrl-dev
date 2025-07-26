@@ -1,11 +1,8 @@
-import random
-
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
-from nsfr.utils.torch import softor, weight_sum
+from nsfr.utils.torch import softor
 
 
 def init_identity_weights(X, device):
@@ -15,7 +12,7 @@ def init_identity_weights(X, device):
 
 class InferModule(nn.Module):
     """
-    A class of differentiable foward-chaining inference.
+    A class of differentiable forward-chaining inference.
     """
 
     def __init__(self, I, m, infer_step, gamma=0.01, device=None, train=False):

@@ -46,12 +46,15 @@ class NSFReasoner(nn.Module):
                 prednames.append(clause.head.pred.name)
         return prednames
 
-    def forward(self, x):
-        self.V_0 = self.init_values(x)
+    def compute_values(self, x: torch.Tensor) -> (torch.Tensor, torch.Tensor):
+        V_0 = self.init_values(x)
+        V_T = self.im(V_0)
 
-        # perform T-step forward-chaining reasoning
-        self.V_T = self.im(self.V_0)
-        # self.print_valuations()
+        return V_0, V_T
+
+    def forward(self, x):
+        self.V_0, self.V_T = self.compute_values(x)
+
         # only return probs of actions
         actions = self.get_predictions(self.V_T, prednames=self.prednames)
         return actions
@@ -69,7 +72,6 @@ class NSFReasoner(nn.Module):
             V_0 = V_0 + self.dummy_zeros
 
         return V_0
-
 
     def predict(self, v, predname):
         """Extract a value from the valuation tensor using a given predicate."""

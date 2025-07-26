@@ -1,8 +1,8 @@
 import inspect
 import re
 from abc import ABC
-from typing import Dict, Union, Callable
 from functools import partial
+from typing import Dict, Union, Callable, List
 
 import torch
 from torch import nn
@@ -42,23 +42,40 @@ class ValuationModule(nn.Module, ABC):
         self.device = device
         self.pretrained = pretrained
 
-    def forward(self, zs: torch.Tensor, atom: Atom):
+    def forward(self, Z: torch.Tensor, atom: Union[Atom, List[Atom]]):
         """Convert the object-centric representation to a valuation tensor.
 
             Args:
-                zs (tensor): The object-centric representation (the output of the YOLO model).
+                Z (tensor): The object-centric representation (the output of the YOLO model).
                 atom (atom): The target atom to compute its probability.
 
             Returns:
                 A batch of the probabilities of the target atom.
         """
+
+        if isinstance(atom, Atom):
+            return self.get_probs(Z, [atom])[0]
+        else:
+            return self.get_probs(Z, atom)
+
+    def get_probs(self, Z: torch.Tensor, atoms: List[Atom]) -> torch.Tensor:
+        batch_size = Z.shape[0]
+        num_atoms = len(atoms)
+        result = torch.zeros(batch_size, num_atoms, device=self.device)
+
+        for i, atom in enumerate(atoms):
+            result[:, i] = self._get_prob(Z, atom)
+
+        return result
+
+    def _get_prob(self, Z: torch.Tensor, atom: Atom) -> torch.Tensor:
         try:
             val_fn = self.val_fns[atom.pred.name]
         except KeyError as e:
             raise NotImplementedError(f"Missing implementation for valuation function '{atom.pred.name}'.")
         # term: logical term
         # args: the vectorized input evaluated by the value function
-        args = [self.ground_to_tensor(term, zs) for term in atom.terms]
+        args = [self.ground_to_tensor(term, Z) for term in atom.terms]
         return val_fn(*args)
 
     def ground_to_tensor(self, const: Const, zs: torch.Tensor):

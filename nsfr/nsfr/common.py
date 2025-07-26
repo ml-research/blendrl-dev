@@ -10,7 +10,7 @@ from nsfr.valuation import ValuationModule
 from utils import optional
 
 
-def get_nsfr_model(env_name: str, rules: str, device: Union[str, torch.device], train=False, explain=False, valuation_model=None):
+def get_nsfr_model(env_name: str, rules: str, device: Union[str, torch.device], train=False, explain=False, valuation_model=None, gamma: float = 0.01):
     current_path = os.path.dirname(__file__)
     lark_path = os.path.join(current_path, 'lark/exp.lark')
     lang_base_path = f"in/envs/{env_name}/logic/"
@@ -26,7 +26,7 @@ def get_nsfr_model(env_name: str, rules: str, device: Union[str, torch.device], 
         if clause.head.pred.name not in prednames:
             prednames.append(clause.head.pred.name)
     m = len(prednames)
-    IM = build_infer_module(clauses, atoms, lang, m=m, infer_step=2, train=train, device=device)
+    IM = build_infer_module(clauses, atoms, lang, m=m, infer_step=2, train=train, device=device, gamma=gamma)
 
     # Neuro-Symbolic Forward Reasoner
     NSFR = NSFReasoner(
@@ -38,12 +38,11 @@ def get_nsfr_model(env_name: str, rules: str, device: Union[str, torch.device], 
         device=device,
         train=train,
         explain=explain,
-        # predicate_model=predicate_model
     )
     return NSFR
 
 
-def get_blender_nsfr_model(env_name: str, rules: str, device: str, train=False, mode='normal', explain=False, valuation_model=None):
+def get_blender_nsfr_model(env_name: str, rules: str, device: str, train=False, mode='normal', explain=False, valuation_model=None, gamma: float = 0.01):
     current_path = os.path.dirname(__file__)
     lark_path = os.path.join(current_path, 'lark/exp.lark')
     lang_base_path = f"in/envs/{env_name}/logic/"
@@ -59,7 +58,7 @@ def get_blender_nsfr_model(env_name: str, rules: str, device: str, train=False, 
         if clause.head.pred.name not in prednames:
             prednames.append(clause.head.pred.name)
     m = len(clauses)
-    IM = build_infer_module(clauses, atoms, lang, m=m, infer_step=2, train=train, device=device)
+    IM = build_infer_module(clauses, atoms, lang, m=m, infer_step=2, train=train, device=device, gamma=gamma)
 
     # Neuro-Symbolic Forward Reasoner
     NSFR = NSFReasoner(
@@ -71,6 +70,5 @@ def get_blender_nsfr_model(env_name: str, rules: str, device: str, train=False, 
         device=device,
         train=train,
         explain=explain,
-        # predicate_model=predicate_model
     )
     return NSFR

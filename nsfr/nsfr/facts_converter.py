@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
-from .fol.logic import NeuralPredicate
 from tqdm import tqdm
+
+from .fol.logic import NeuralPredicate
 
 
 class FactsConverter(nn.Module):
@@ -53,17 +54,17 @@ class FactsConverter(nn.Module):
         batch_size = Z.size(0)
 
         # V = self.init_valuation(len(G), Z.size(0))
-        V = torch.zeros((batch_size, len(G))).to(
-            torch.float32).to(self.device)
+        V = torch.zeros((batch_size, len(G)), dtype=torch.float32, device=self.device)
+        vm_indices = []
+        vm_atoms = []
         for i, atom in enumerate(G):
             if type(atom.pred) == NeuralPredicate and i > 1:
-                V[:, i] = self.vm(Z, atom)
+                vm_indices.append(i)
+                vm_atoms.append(atom)
             elif atom in B:
-                # V[:, i] += 1.0
-                V[:, i] += torch.ones((batch_size,)).to(
-                    torch.float32).to(self.device)
-        V[:, 1] = torch.ones((batch_size,)).to(
-            torch.float32).to(self.device)
+                V[:, i] += torch.ones((batch_size,), dtype=torch.float32, device=self.device)
+        V[:, vm_indices] = self.vm(Z, vm_atoms)
+        V[:, 1] = torch.ones((batch_size,), dtype=torch.float32, device=self.device)
         return V
 
     def convert_i(self, zs, G):
