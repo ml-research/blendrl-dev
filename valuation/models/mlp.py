@@ -2,10 +2,9 @@ from typing import List
 
 import torch as th
 from dataclasses import dataclass, field
+from torch import nn
 
 from nsfr.fol.language import Language
-from nsfr.fol.logic import NeuralPredicate
-from utils import FRAME_SIZE
 from valuation.models.base import BaseValuationModel, BaseValuationModelConfig
 
 
@@ -14,6 +13,7 @@ class MLPConfig(BaseValuationModelConfig):
     type = "mlp"
 
     hidden_sizes: List[int] = field(default_factory=lambda: [64, 32])
+    random_weight_initialization: bool = True
 
 
 class ValuationMLP(th.nn.Module):
@@ -30,6 +30,13 @@ class ValuationMLP(th.nn.Module):
             *layers,
             th.nn.Sigmoid()
         )
+
+    def _init_zero(self):
+        modules = self.model.modules()
+        for m in modules:
+            if isinstance(m, th.nn.Linear):
+                nn.init.zeros_(m.weight)
+                nn.init.zeros_(m.bias)
 
     def forward(self, x):
         y = self.model(x).squeeze(-1)
@@ -51,6 +58,8 @@ class ValuationModelMLP(BaseValuationModel):
                 if config.use_position_difference:
                     input_size -= 4
                 mlp = ValuationMLP(input_size=input_size, hidden_sizes=config.hidden_sizes, output_size=1).to(self.device)
+                if not self.config.random_weight_initialization:
+                    mlp._init_zero()
                 mlps[module_name] = mlp
 
         self.heads = th.nn.ModuleDict(mlps)
