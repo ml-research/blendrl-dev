@@ -15,6 +15,7 @@ class BaseValuationModelConfig:
     static_predicates: List[str] = field(default_factory=lambda: [])
     use_position_difference: bool = False
     discard_missing_objects: bool = False
+    clip_value: float = 0.0
 
 
 class BaseValuationModel(th.nn.Module, ABC):
@@ -76,6 +77,7 @@ class BaseValuationModel(th.nn.Module, ABC):
 
         # Forward to valuation model
         result[indices] = self.forward_predicate(predicate_name, x)
+        th.clip(result, self.config.clip_value, 1 - self.config.clip_value)
         return result
 
     @abstractmethod
