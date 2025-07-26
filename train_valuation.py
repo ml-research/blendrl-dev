@@ -5,7 +5,6 @@ import shutil
 import time
 from collections import defaultdict
 from pathlib import Path
-from typing import List
 
 import numpy as np
 import torch
@@ -15,16 +14,13 @@ import tyro
 import wandb
 from dataclasses import asdict
 from rtpt import RTPT
-from scipy.stats import binned_statistic_2d
 from torch.nn import BCELoss
 from torch.utils.tensorboard import SummaryWriter
 
 from blendrl.agents.blender_agent import BlenderActorCritic
 from blendrl.env_vectorized import VectorizedNudgeBaseEnv
-from nsfr.infer import InferModule
-from nudge.utils import get_objs
 from plot.plot_utils import discretize_frame, get_predicate_heatmaps, get_cmap, create_prior_fig, fig_to_rgb
-from utils import reset_parameters, save_model_state, FRAME_SIZE, to_np, ArrayIO
+from utils import save_model_state, FRAME_SIZE, to_np, ArrayIO, normalize
 from valuation.config import ValuationConfig
 from valuation.experiment import ValuationExperiment
 from valuation.utils import sample_inputs
@@ -47,7 +43,7 @@ def main():
     # Setup process
     rtpt = RTPT(
         name_initials="HS",
-        experiment_name="BlendRL",
+        experiment_name=f"BlendRL_{args.exp_name}",
         max_iterations=max(1, int(args.total_timesteps / args.save_steps)),
     )
 
@@ -145,12 +141,11 @@ def main():
 
     # Load agent model
     agent: BlenderActorCritic = experiment.get_model(device, load_from_latest_checkpoint=args.recover)
+    experiment.parameter_summary.print()
+    experiment.parameter_summary.save_as_csv(experiment.parameter_summary_path)
     agent.env.reset()
 
     valuation_model = agent.valuation_model
-
-    trainable_models = [valuation_model]
-    saveable_model_prefixes = {"valuation_model."}
 
     # Collect all relational predicates that are not static
     all_relational_predicates = set([pred.name for pred in experiment.language.neural_predicates if pred.arity == 2])
@@ -162,37 +157,11 @@ def main():
         oracle_valuation_model = experiment.get_oracle(device)
         oracle_valuation_model.requires_grad_(False)
 
-    # Reset weights
-    if args.reset_blending_weights:
-        im: InferModule = agent.blender.im
-        im.W = im.init_random_weights(device)
-
-    if args.reset_logic_critic and not training_is_resumed:
-        reset_parameters(agent.logic_critic)
-
-    if args.reset_logic_actor and not training_is_resumed:
-        reset_parameters(agent.logic_actor)
-
-    # Collect models that shall be trained
-    if args.learn_blending_weights:
-        trainable_models.append(agent.blender.im)
-        saveable_model_prefixes.add("blender.im.")
-    if args.learn_logic_critic:
-        trainable_models.append(agent.logic_critic)
-        saveable_model_prefixes.add("logic_critic.")
-    if args.learn_logic_actor:
-        trainable_models.append(agent.logic_actor)
-        saveable_model_prefixes.add("logic_actor.")
-
-    # Freeze agent
-    agent.requires_grad_(False)
-    for model in trainable_models:
-        model.requires_grad_(True)
-
     # Create static inputs for heatmaps
     player_input, grid_shape = discretize_frame(experiment.env_name, 32, device)
-    ladders = get_objs(agent.env, "Ladder")
-    obj_inputs = [discretize_frame(experiment.env_name, 32, device, ladder.center)[0] for ladder in ladders]
+    frame_size = FRAME_SIZE[experiment.env_name]
+    center_pos = (frame_size[0] / 2, frame_size[1] / 2)
+    obj_inputs = [discretize_frame(experiment.env_name, 32, device, center_pos)[0]]
 
     # Rewards actually used to train model
     episodic_game_returns = torch.zeros((args.num_envs), device=device)
@@ -204,8 +173,11 @@ def main():
 
     # Setup optimizer
     params = []
-    for model in trainable_models:
-        params.extend(list(model.parameters()))
+    param_names = []
+    for name, param in agent.named_parameters():
+        if param.requires_grad:
+            params.append(param)
+            param_names.append(name)
 
     optimizer = optim.Adam([{"params": params, "lr": args.logic_learning_rate}],
         lr=args.logic_learning_rate,
@@ -344,7 +316,7 @@ def main():
                     print("Environment {} has been reset".format(k))
 
                     # reset player position
-                    if args.randomize_start_position:
+                    if args.randomize_start_position and experiment.env_name == "kangaroo":
                         noop_action = envs.pred2action['noop']
                         envs.envs[k].step(noop_action)
                         # this is a hack to re-apply the game modification after the episode has ended
@@ -356,7 +328,7 @@ def main():
 
                 # Save agent weights
                 checkpoint_path = checkpoint_dir / f"step_{save_step_bar}.pth"
-                save_model_state(agent, checkpoint_path, list(saveable_model_prefixes))
+                save_model_state(agent, checkpoint_path, param_names)
                 print("\nSaved model at:", checkpoint_path)
 
                 # Save training data
@@ -425,6 +397,12 @@ def main():
             frac = 1.0 - (global_step / args.total_timesteps)
             blend_ent_coef = args.blend_ent_coef * frac
 
+        # Anneal concept coefficient
+        concept_coef = args.concept_coef
+        if args.anneal_concept_coef:
+            frac = 1.0 - (global_step / args.total_timesteps)
+            concept_coef = args.concept_coef * frac
+
         # Optimizing the policy and value network
         b_inds = np.arange(args.batch_size)
         clipfracs = []
@@ -454,9 +432,7 @@ def main():
                 # Normalize advantages
                 mb_advantages = b_advantages[mb_inds]
                 if args.norm_adv:
-                    mb_advantages = (mb_advantages - mb_advantages.mean()) / (
-                        mb_advantages.std() + 1e-8
-                    )
+                    mb_advantages = normalize(mb_advantages, eps=1e-8)
                 b_fin_advantages[mb_inds] = mb_advantages
 
                 # Policy loss
@@ -506,7 +482,7 @@ def main():
                             writer.add_scalar("losses/concept_loss/" + pred_name, pred_concept_loss.item(), global_step)
                         fin_concept_loss += pred_concept_loss
 
-                fin_concept_loss *= args.concept_coef
+                fin_concept_loss *= concept_coef
 
                 # Total loss
                 loss = pg_loss + joint_entropy_loss + fin_v_loss + fin_concept_loss
@@ -514,7 +490,7 @@ def main():
                 # Backpropagation
                 optimizer.zero_grad()
                 loss.backward()
-                nn.utils.clip_grad_norm_(valuation_model.parameters(), args.max_grad_norm) # TODO clip all learnable model parameters
+                nn.utils.clip_grad_norm_(params, args.max_grad_norm)
                 optimizer.step()
 
             if args.target_kl is not None and approx_kl > args.target_kl:
@@ -528,23 +504,23 @@ def main():
                 writer.add_image("predicates/" + pred_name, heatmap, global_step, dataformats="HW")
 
             # Save heatmaps for advantages per action
-            a_names = ["up", "right", "left"]
-            for a_name in a_names:
-                a_idx = envs.pred2action[a_name]
-                a_inds = torch.argwhere(b_actions == a_idx).flatten()
-                a_positions = to_np(b_positions[a_inds])
-                a_advantages = to_np(b_fin_advantages[a_inds])
-                a_heatmap, _, _, _ = binned_statistic_2d(
-                    a_positions[:, 0], a_positions[:, 1], a_advantages,
-                    statistic='mean',
-                    bins=(32, 42),
-                    range=np.array([[0, frame_size[0]], [0, frame_size[1]]])
-                )
-                a_heatmap = np.nan_to_num(a_heatmap, nan=0.0)
-                a_heatmap = np.ma.masked_where(a_heatmap == 0.0, a_heatmap)
-                a_heatmap = (a_heatmap / 2.0) + 0.5 # map [-1, 1] to [0, 1]
-                a_heatmap = DIVERGENT_CMAP(a_heatmap)[:, :, :3]
-                writer.add_image("advantages/" + a_name, a_heatmap, global_step, dataformats="WHC")
+            # a_names = ["up", "right", "left"]
+            # for a_name in a_names:
+            #     a_idx = envs.pred2action[a_name]
+            #     a_inds = torch.argwhere(b_actions == a_idx).flatten()
+            #     a_positions = to_np(b_positions[a_inds])
+            #     a_advantages = to_np(b_fin_advantages[a_inds])
+            #     a_heatmap, _, _, _ = binned_statistic_2d(
+            #         a_positions[:, 0], a_positions[:, 1], a_advantages,
+            #         statistic='mean',
+            #         bins=(32, 42),
+            #         range=np.array([[0, frame_size[0]], [0, frame_size[1]]])
+            #     )
+            #     a_heatmap = np.nan_to_num(a_heatmap, nan=0.0)
+            #     a_heatmap = np.ma.masked_where(a_heatmap == 0.0, a_heatmap)
+            #     a_heatmap = (a_heatmap / 2.0) + 0.5 # map [-1, 1] to [0, 1]
+            #     a_heatmap = DIVERGENT_CMAP(a_heatmap)[:, :, :3]
+            #     writer.add_image("advantages/" + a_name, a_heatmap, global_step, dataformats="WHC")
 
             # Increase the step bar for logging heatmaps
             log_step_bar += args.log_heatmaps_steps

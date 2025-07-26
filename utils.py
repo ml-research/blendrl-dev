@@ -7,7 +7,7 @@ import pkgutil
 import re
 from collections import OrderedDict
 from pathlib import Path
-from typing import List, Optional, TypeVar, Type, Union, Dict
+from typing import List, Optional, TypeVar, Type, Union, Dict, Iterable
 
 import gymnasium as gym
 import numpy as np
@@ -87,7 +87,7 @@ class CNNActor(nn.Module):
         probs = Categorical(logits=logits)
         return probs.probs
 
-def get_blender(env, blender_rules, device, train=True, blender_mode='logic', reasoner='nsfr', explain=False, valuation_model=None):
+def get_blender(env, blender_rules, device, train=True, blender_mode='logic', reasoner='nsfr', explain=False, valuation_model=None, gamma: float = 0.01):
     """
     Load a Blender model. 
     Args:
@@ -105,7 +105,7 @@ def get_blender(env, blender_rules, device, train=True, blender_mode='logic', re
     if blender_mode == 'logic':
         if reasoner == 'nsfr':
             from nsfr.common import get_blender_nsfr_model
-            return get_blender_nsfr_model(env.name, blender_rules, device, train=train, explain=explain, valuation_model=valuation_model)
+            return get_blender_nsfr_model(env.name, blender_rules, device, train=train, explain=explain, valuation_model=valuation_model, gamma=gamma)
         elif reasoner == 'neumann':
             from neumann.common import get_neumann_model, get_blender_neumann_model
             return get_blender_neumann_model(env.name, blender_rules, device, train=train, explain=explain)
@@ -227,7 +227,7 @@ def load_classes_in_package(package: str, subclass: Optional[Type[T]]) -> List[T
 
     return classes
 
-def load_model_state(checkpoint_path: Path, model: any, strict: bool = False, include_prefixes: Optional[List[str]] = None, exclude_prefixes: List[str] = [], discard_prefix_from_key: bool = False):
+def get_model_state(checkpoint_path: Path, include_prefixes: Optional[List[str]] = None, exclude_prefixes: List[str] = [], discard_prefix_from_key: bool = False):
     with open(checkpoint_path, "rb") as f:
         device = torch.device('cpu')
         state_dict = torch.load(f, map_location=device, weights_only=True)
@@ -246,7 +246,12 @@ def load_model_state(checkpoint_path: Path, model: any, strict: bool = False, in
                     new_state_dict[new_key] = v
                     break
 
+    return new_state_dict
+
+def load_model_state(checkpoint_path: Path, model: any, strict: bool = False, include_prefixes: Optional[List[str]] = None, exclude_prefixes: List[str] = [], discard_prefix_from_key: bool = False) -> dict:
+    new_state_dict = get_model_state(checkpoint_path, include_prefixes, exclude_prefixes, discard_prefix_from_key)
     model.load_state_dict(state_dict=new_state_dict, strict=strict)
+    return new_state_dict
 
 
 def save_model_state(model: nn.Module, checkpoint_path: Path, prefixes: List[str] = []):
@@ -266,15 +271,32 @@ def reset_parameters(model: torch.nn.Module):
             mod.reset_parameters()
 
 
+def masked_softmax(x, mask, dim, nan_fill = 0.0, *args, **kwargs):
+    x = x.masked_fill(~mask, float('-inf'))
+    y = torch.softmax(x, dim=dim, *args, **kwargs)
+    y = y.nan_to_num(nan_fill)
+    return y
+
+
+def normalize(arr: Union[torch.Tensor, np.ndarray], eps: float = 1e-8) -> Union[torch.Tensor, np.ndarray]:
+    return (arr - arr.mean()) / (arr.std() + eps)
+
 FRAME_SIZE = {
-    "kangaroo": (160.0, 210.0)
+    "seaquest": (160.0, 210.0),
+    "kangaroo": (160.0, 210.0),
+    "donkeykong": (160.0, 210.0)
 }
 
 DEFAULT_MODIFICATIONS = {
+    "seaquest": [],
     "kangaroo": [
         "disable_coconut",
         "randomize_kangaroo_position",
         "change_level_0",
+    ],
+    "donkeykong": [
+        "random_start",
+        "change_level_0"
     ]
 }
 
@@ -289,6 +311,10 @@ def running_average(arr: np.ndarray, window: int) -> np.ndarray:
         start = max(0, i - window + 1)
         result[i] = np.mean(arr[start:i+1])
     return result
+
+
+def round_decimals(x: torch.Tensor, decimals: int = 3) -> torch.Tensor:
+    return torch.round(x * (10 ** decimals)) / (10 ** decimals)
 
 
 class ArrayIO:
@@ -377,7 +403,11 @@ class ArrayIO:
             raise ValueError("Input must be a numpy array")
 
         if array.ndim == 0:
-            raise ValueError("Cannot append 0-dimensional arrays")
+            array = np.expand_dims(array, 0)
+            array = np.expand_dims(array, 1)
+
+        if array.ndim == 1:
+            array = np.expand_dims(array, 1)
 
         # Initialize buffer if it doesn't exist
         if key not in self.buffers:
@@ -497,3 +527,53 @@ class ArrayIO:
 
     def __repr__(self) -> str:
         return f"ArrayIO(dir='{self.dir}', chunk_size={self.chunk_size}, datasets={len(self)})"
+
+
+class ParameterSummary:
+
+    def __init__(self):
+        self.infos = dict()
+
+    def set_from_state_dict(self, state_dict: dict, prefix: Optional[str] = None, **kwargs):
+        for key, param in state_dict.items():
+            fq_key = optional(prefix, "") + key
+            self.infos[fq_key] = {**self.infos.get(fq_key, {}), **kwargs, "shape": list(param.shape)}
+
+    def set_from_prefix(self, prefixes: Iterable[str], **kwargs):
+        for key, info in self.infos.items():
+            if any(key.startswith(prefix) for prefix in prefixes):
+                self.infos[key] = {**info, **kwargs}
+
+    @property
+    def table(self):
+        from prettytable import PrettyTable
+
+        field_names = ["Parameter", "Shape", "Checkpoint", "Frozen", "Used"]
+        table = PrettyTable()
+        table.field_names = field_names
+        table.align = "l"
+
+        sorted_keys = sorted(self.infos.keys())
+        bool_str = lambda b: "Yes" if b else "No"
+        for key in sorted_keys:
+            info = self.infos[key]
+            row = [
+                key,
+                optional(info["shape"], "n/a"),
+                optional(info["checkpoint_path"], "n/a"),
+                bool_str(info.get("frozen", False)),
+                bool_str(info.get("used", False))
+            ]
+
+            table.add_row(row)
+
+        return table
+
+    def print(self):
+        table = self.table
+        print(table)
+
+    def save_as_csv(self, path: Path):
+        table = self.table
+        with open(str(path), "w") as f:
+            f.write(table.get_csv_string(delimiter=";"))
