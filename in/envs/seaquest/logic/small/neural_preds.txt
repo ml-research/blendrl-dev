@@ -1,0 +1,10 @@
+visible_diver:1:odiver
+not_full_divers:1:image
+full_divers:1:image
+deeper_than_diver:2:oplayer,odiver
+higher_than_diver:2:oplayer,odiver
+close_by_enemy:2:oplayer,oenemy
+close_by_missile:2:oplayer,omissile
+left_of_diver:2:oplayer,odiver
+right_of_diver:2:oplayer,odiver
+oxygen_low:1:ooxygenbar

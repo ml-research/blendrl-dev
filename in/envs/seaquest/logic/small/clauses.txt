@@ -1,0 +1,6 @@
+up_air(X):-oxygen_low(B).
+up_rescue(X):-full_divers(X).
+left_to_diver(X):-right_of_diver(P,D),visible_diver(D),not_full_divers(X).
+right_to_diver(X):-left_of_diver(P,D),visible_diver(D),not_full_divers(X).
+up_to_diver(X):-deeper_than_diver(P,D),visible_diver(D),not_full_divers(X).
+down_to_diver(X):-higher_than_diver(P,D),visible_diver(D),not_full_divers(X).
