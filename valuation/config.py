@@ -38,6 +38,7 @@ class ValuationConfig:
     """the type and config of the oracle model"""
     exp_name: str = "train_valuation"
     """the name of this experiment"""
+    env_id: str = ""
     seed: int = 0
     """seed of the experiment"""
     torch_deterministic: bool = True
@@ -129,47 +130,89 @@ class ValuationConfig:
     reasoner: str = "nsfr"
     """the reasoner used in the agent; nsfr or neumann"""
 
+    # ==================================================================================================================
+    # EXTRA ARGS
+    # ==================================================================================================================
+
+    # Auxiliary + Unused
     anneal_blend_ent_coef: bool = False
     """whether to gradually reduce the coefficient of the blend entropy"""
-    learn_blending_weights: bool = False
-    """whether to finetune the blending weights"""
-    learn_logic_critic: bool = False
-    """whether to finetune the logic critic"""
-    reset_blending_weights: bool = False
-    """whether to randomize the blending weights"""
-    reset_logic_critic: bool = False
-    """whether to randomize the weights of the logic critic"""
     reward_logic_subgoals: bool = False
     """whether to extend the reward function by logic subgoals"""
+    regularize_ood_coef: float = 0.0
+    regularize_ood_eps: float = 1.0
+    logic_critic_use_only_player_pos: bool = False
+    """whether the logic critic only uses the player position as input"""
+    logic_actor_use_attention: bool = False
+    """whether to use attention across available atoms in the logic actor"""
+    logic_actor_use_permutation: bool = False
+    """whether to permute the valuation functions across atoms"""
+    object_dropout: float = 0.0
+    """probability of dropping objects in the environment"""
+    #atom_ent_coef: float = 0.00
+    #"""coefficient of the atom values"""
+
+    # Reset, finetune, overwrite and modify components
+    ## Neural critic + actor
+    reset_neural_component: bool = False
+    """whether to randomize weights of the neural critic and actor"""
+    learn_neural_component: bool = False
+    """whether to finetune the neural critic and actor"""
+
+    ## Blender
+    reset_blending_weights: bool = False
+    """whether to randomize the blending weights"""
+    learn_blending_weights: bool = False
+    """whether to finetune the blending weights"""
+
+    ## Logic Critic
+    reset_logic_critic: bool = False
+    """whether to randomize the weights of the logic critic"""
+    learn_logic_critic: bool = False
+    """whether to finetune the logic critic"""
+    logic_critic_path: Optional[str] = None
+    """path to the experiment from which the logic critic shall be initialized from"""
+
+    ## Logic Actor
+    reset_logic_actor: bool = False
+    """whether to reset the weights of the logic actor"""
+    learn_logic_actor: bool = False
+    """whether to finetune the logic actor"""
+    logic_actor_path: Optional[str] = None
+    """path to the experiment from which the logic actor shall be initialized from"""
+    softor_gamma: float = 0.01
+    """Gamma coefficient for the softor operator"""
+
+    ## Valuation Model
+    valuation_model_path: Optional[str] = None
+    """path to the experiment from which the valuation model shall be initialized from"""
+    freeze_valuation_model: bool = False
+    """whether to freeze the valuation model (can be used with `valuation_model_path` to use a pre-trained model)"""
+
+    # Environment
     extra_env_modifications: List[str] = field(default_factory=list)
     """extra modifications that shall be applied to the environments"""
     env_max_ep_steps: Optional[int] = None
     """maximum steps after which an episode is reset"""
     env_frameskip: int = 4
     """frames to skip"""
-    reward_fn: str = "default"
-    """the reward function"""
     randomize_start_position: bool = False
     """whether to randomize the start position of the player after the episode has finished"""
-    logic_critic_path: Optional[str] = None
-    """path to the experiment from which the logic critic shall be initialized from"""
-    log_heatmaps_steps: Optional[int] = None
-    """steps after which heatmaps for e.g. critics and valuation models shall be logged (if None, logging will be skipped)"""
-    regularize_ood_coef: float = 0.0
-    regularize_ood_eps: float = 1.0
+    reward_fn: str = "default"
+    """the reward function"""
+
+    # Oracle
+    anneal_concept_coef: bool = False
+    """whether to anneal the concept coefficient"""
     concept_coef: float = 0.1
     """coefficient of the concept loss"""
     oracle_sampling_mode: OracleSamplingMode = "grid"
     """how to sample points for the oracle"""
     oracle_num_samples: int = 961
     """how many points to sample for the oracle"""
-    logic_critic_use_only_player_pos: bool = False
-    """whether the logic critic only uses the player position as input"""
+
+    # Logging
+    log_heatmaps_steps: Optional[int] = None
+    """steps after which heatmaps for e.g. critics and valuation models shall be logged (if None, logging will be skipped)"""
     save_train_data: bool = False
     """whether to save data used to train the model"""
-    reset_logic_actor: bool = False
-    """whether to reset the weights of the logic actor"""
-    learn_logic_actor: bool = False
-    """whether to finetune the logic actor"""
-    #atom_ent_coef: float = 0.00
-    #"""coefficient of the atom values"""

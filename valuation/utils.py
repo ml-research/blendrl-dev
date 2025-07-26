@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import math
-from typing import List, Type, Optional, get_args
+from typing import List, Type, Optional
 
 import torch
 from torch import nn as nn
 
 from utils import load_classes_in_package, load_module
-from valuation.config import OracleSamplingMode
 from valuation.models.base import BaseValuationModel
 
 
@@ -31,7 +30,7 @@ def get_default_valuation_model(env_name: str, device: torch.device) -> nn.Modul
     return model
 
 
-def sample_inputs(num: int, mode: OracleSamplingMode, device: torch.device, x_range: (float, float) = (-1, 1), y_range: (float, float) = (-1, 1)) -> torch.Tensor:
+def sample_inputs(num: int, mode: str, device: torch.device, x_range: (float, float) = (-1, 1), y_range: (float, float) = (-1, 1)) -> torch.Tensor:
     if mode == "random":
         positions = torch.rand(num, 2, device=device)
     elif mode == "grid":
@@ -49,7 +48,7 @@ def sample_inputs(num: int, mode: OracleSamplingMode, device: torch.device, x_ra
             positions[i, 0] = cell_size[0] * (col + 1)
             positions[i, 1] = cell_size[1] * (row + 1)
     else:
-        assert True, f"Unknown sampling mode {mode} (expected one of {get_args(OracleSamplingMode)})"
+        assert True, f"Unknown sampling mode {mode})"
 
     positions[:, 0] = positions[:, 0] * (x_range[1] - x_range[0]) + x_range[0]
     positions[:, 1] = positions[:, 1] * (y_range[1] - y_range[0]) + y_range[0]
