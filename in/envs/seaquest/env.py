@@ -1,21 +1,13 @@
-from typing import Sequence
+from typing import Sequence, Optional, List
+
 import torch
-from nudge.env import NudgeBaseEnv
-from hackatari.core import HackAtari
-from blendrl.env_utils import make_env
-import numpy as np
 import torch as th
 from ocatari.ram.seaquest import MAX_NB_OBJECTS
-import gymnasium as gym
 
-
-from stable_baselines3.common.atari_wrappers import (  # isort:skip
-    ClipRewardEnv,
-    EpisodicLifeEnv,
-    FireResetEnv,
-    MaxAndSkipEnv,
-    NoopResetEnv,
-)
+from blendrl.env_utils import make_env
+from hackatari.core import HackAtari
+from nudge.env import NudgeBaseEnv
+from utils import optional, DEFAULT_MODIFICATIONS
 
 
 class NudgeEnv(NudgeBaseEnv):
@@ -31,22 +23,33 @@ class NudgeEnv(NudgeBaseEnv):
     pred_names: Sequence
 
     def __init__(
-        self, mode: str, render_mode="rgb_array", render_oc_overlay=False, seed=None
+            self,
+            mode: str,
+            render_mode="rgb_array",
+            render_oc_overlay=False,
+            seed=None,
+            modifications: Optional[List[str]] = None,
+            reward_fn_path: Optional[str] = None,
+            *args,
+            **kwargs
     ):
         super().__init__(mode)
         self.env = HackAtari(
             env_name="ALE/Seaquest-v5",
             mode="ram",
             obs_mode="ori",
-            rewardfunc_path="in/envs/seaquest/blenderl_reward.py",
+            modifs=optional(modifications, DEFAULT_MODIFICATIONS[NudgeEnv.name]),
+            rewardfunc_path=optional(reward_fn_path, f"in/envs/{NudgeEnv.name}/reward/default.py"),
             render_mode=render_mode,
             render_oc_overlay=render_oc_overlay,
+            *args,
+            **kwargs
         )
         # for learning script from cleanrl
         self.env._env = make_env(self.env._env)
         self.n_actions = 6
         self.n_raw_actions = 18
-        self.n_objects = 43
+        self.n_objects = 43 # there are only 42 objects, but we keep it at 43 for backward compatibility
         self.n_features = 4  # visible, x-pos, y-pos, right-facing
         self.seed = seed
 

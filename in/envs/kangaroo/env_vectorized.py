@@ -66,7 +66,7 @@ class VectorizedNudgeEnv(VectorizedNudgeBaseEnv):
                 mode="ram",
                 obs_mode="ori",
                 modifs=optional(modifications, DEFAULT_MODIFICATIONS[VectorizedNudgeEnv.name]),
-                rewardfunc_path=optional(reward_fn_path, "in/envs/kangaroo/reward/default.py"),
+                rewardfunc_path=optional(reward_fn_path, f"in/envs/{VectorizedNudgeEnv.name}/reward/default.py"),
                 render_mode=render_mode,
                 render_oc_overlay=render_oc_overlay,
                 *args,

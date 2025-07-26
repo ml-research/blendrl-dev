@@ -6,13 +6,13 @@ from nsfr.utils.common import bool_to_probs
 def full_divers(objs: th.Tensor) -> th.Tensor:
     # objs: batch_size, 43, 4
     # result = th.tensor(False)
-    divers_vs = objs[:, -6:]
+    divers_vs = objs[:, -7:-1]
     num_collected_divers = th.sum(divers_vs[:,:,0], dim=1)
     result = num_collected_divers == 6
     return bool_to_probs(result)
 
 def not_full_divers(objs: th.Tensor) -> th.Tensor:
-    divers_vs = objs[:, -6:]
+    divers_vs = objs[:, -7:-1]
     num_collected_divers = th.sum(divers_vs[:,:,0], dim=1)
     result = num_collected_divers < 6
     return bool_to_probs(result)
