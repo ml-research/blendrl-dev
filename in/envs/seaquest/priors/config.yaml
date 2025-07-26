@@ -1,0 +1,62 @@
+env:
+  name: Seaquest
+  rules_and_mechanics:
+    - "The player can move left/right/up/down to collect divers."
+    - "The player loses a life if hit by a missile, shark or submarine."
+scene:
+  width: 160
+  height: 210
+  player:
+    width: 16
+    height: 11
+  object_groups:
+    - type: diver
+      width: 8
+      height: 11
+    - type: shark
+      width: 8
+      height: 7
+    - type: submarine
+      width: 8
+      height: 11
+    - type: missile
+      width: 6
+      height: 4
+predicates:
+  - name: "left_of_diver"
+    object_types:
+    - diver
+    description: "left of"
+    action: go right
+    purpose: go right to get closer to the diver
+  - name: "right_of_diver"
+    object_types:
+    - diver
+    description: "right of"
+    action: go left
+    purpose: go left to get closer to the diver
+  - name: "higher_than_diver"
+    object_types:
+    - diver
+    description: "above"
+    action: go down
+    purpose: go down to get closer to the diver
+  - name: "deeper_than_diver"
+    object_types:
+    - diver
+    description: "below"
+    action: go up
+    purpose: go up to get closer to the diver
+  - name: "close_by_enemy"
+    object_types:
+    - shark
+    - submarine
+    description: "close by"
+    action: shoot
+    purpose: shoot to kill the enemy
+  - name: "close_by_missile"
+    object_types:
+    - missile
+    description: "close by"
+    action: dodge
+    purpose: dodge the missile
