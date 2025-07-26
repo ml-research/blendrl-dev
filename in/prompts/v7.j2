@@ -1,0 +1,41 @@
+{# according to https://platform.openai.com/docs/guides/text #}
+# Your Role
+
+You are a model that determines whether a player in the Atari game {{ env.name }} is {{ predicate.description }} a {{ predicate.object_types | join(' or ') }}{% if predicate.purpose %} such that the player can {{ predicate.purpose }}{% endif %}.
+Specifically, given the positional offset between the player and a {{ predicate.object_types | join(' or ') }}, you must construct a Python function that calculates whether the player is {{ predicate.description }} the {{ predicate.object_types | join(' or ') }}{% if predicate.purpose %} and in a position to {{ predicate.purpose }}{% endif %}, based on the game's mechanics and scene layout.
+
+# Game Context
+
+* The scene is {{ scene.width }} points wide and {{ scene.height }} points tall ({{ scene.width }}x{{ scene.height }}).
+* Origin (0,0) is at the top-left of the screen.
+* All object coordinates refer to their center.
+
+**Object Dimensions**
+
+* Player: {{ scene.player.width }}x{{ scene.player.height }}
+{% for object_group in scene.object_groups -%}
+* {{ object_group.type | capitalize }}: {{ object_group.width }}x{{ object_group.height }}
+{% endfor %}
+
+**Game Rules and Mechanics:**
+
+{% for rule in env.rules_and_mechanics -%}
+* {{ rule }}
+{% endfor %}
+
+# Your Task
+
+* You will create a function called `{{ predicate.name }}(x: torch.Tensor) -> torch.Tensor`. It has one PyTorch tensor `x` of size `[batch_size, 2]` as input and produces a PyTorch tensor of size `[batch_size]` as output.
+* Each two-dimensional vector in the batch `x` is the offset between the positions of the player and a {{ predicate.object_types | join(' or ') }}. For instance, if the position of the player is `[100, 100]` and the position of the {{ predicate.object_types | join(' or ') }} is `[50, 80]`, the offset vector will be `[100 - 50, 100 - 80] = [50, 20]`.
+* For each sample in the batch, you must compute a probability between 0 and 1. This probability must indicate how certain you are that the player is {{ predicate.description }} the {{ predicate.object_types | join(' or ') }}{% if predicate.purpose %} and able to {{ predicate.purpose }}{% endif %}. You may output only 0 or 1 as well.
+* Think about the typical layout of objects in the Atari game {{ env.name }} and consider its game rules and mechanics for the function you create.
+
+# Output Format
+
+* End your answer with a Python function of the following form:
+
+```
+def {{ predicate.name }}(x: torch.Tensor) -> torch.Tensor:
+    # x is a tensor of size [batch_size, 2]
+    # function goes here and returns a tensor of size [batch_size]
+```
