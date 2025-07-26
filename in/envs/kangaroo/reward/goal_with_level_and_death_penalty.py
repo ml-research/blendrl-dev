@@ -9,6 +9,7 @@ def reward_function(self) -> float:
 
     levels = [148, 100, 52, 4]
     current_level_idx = 0
+    current_lives = self.ale.lives()
     for level_idx in range(1, len(levels)):
         if player.y <= levels[level_idx]:
             current_level_idx = level_idx
@@ -20,10 +21,12 @@ def reward_function(self) -> float:
     if not hasattr(self, '_reward_fn_state'):
         self._reward_fn_state: Dict[str, Any] = {
             "level_idx": current_level_idx,
+            "lives": current_lives,
             "frame_number": current_frame_number,
         }
 
     prev_frame_number = self._reward_fn_state["frame_number"]
+    prev_lives = self._reward_fn_state["lives"]
     new_ep = prev_frame_number > current_frame_number
 
     if new_ep or self._reward_fn_state["level_idx"] is None:
@@ -32,6 +35,10 @@ def reward_function(self) -> float:
     prev_level_idx = self._reward_fn_state["level_idx"]
 
     reward = 0.0
+
+    # if player has lost a life, give penalty and update reward fn state
+    if current_lives < prev_lives:
+        reward -= 1.0
 
     # if player moved one level up, give reward and update reward fn state
     if not new_ep and current_level_idx > prev_level_idx:
@@ -44,6 +51,7 @@ def reward_function(self) -> float:
         else:
             self._reward_fn_state["level_idx"] = current_level_idx
 
+    self._reward_fn_state["lives"] = current_lives
     self._reward_fn_state["frame_number"] = current_frame_number
 
     return reward
