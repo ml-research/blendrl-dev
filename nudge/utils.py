@@ -14,7 +14,8 @@ from blendrl.env_vectorized import VectorizedNudgeBaseEnv
 from nsfr.nsfr import NSFReasoner
 from nsfr.utils.torch import softor
 from nudge.env import NudgeBaseEnv
-from utils import optional, load_model_state
+from utils import optional, load_model_state, get_default_device
+from valuation.models.base import BaseValuationModel
 
 
 def to_proportion(dic):
@@ -76,25 +77,27 @@ def simulate_prob(extracted_states, num_of_objs, key_picked):
     return extracted_states
 
 
-def load_model(model_dir,
+def build_model(model_dir: Path,
                env_kwargs_override: Optional[dict] = None,
-               steps = None,
-               device=torch.device('cuda:0'),
-               explain=False,
-               valuation_model=None,
+               step: Optional[int] = None,
+               device: Optional[torch.device] = None,
+               explain: bool = False,
+               valuation_model: Optional[BaseValuationModel] = None,
                config_override: Optional[dict] = None
                ):
+
+    device = optional(device, get_default_device())
 
     # Determine all relevant paths
     model_dir = Path(model_dir)
     config_path = model_dir / "config.yaml"
     checkpoint_dir = model_dir / "checkpoints"
-    if steps == None:
+    if step is None:
         most_recent_step = get_most_recent_checkpoint_step(checkpoint_dir)
     else:
-        most_recent_step = steps
+        most_recent_step = step
     checkpoint_path = checkpoint_dir / f"step_{most_recent_step}.pth"
-    
+
     print("Loading model from", checkpoint_path)
 
     # Load model's configuration
@@ -126,8 +129,22 @@ def load_model(model_dir,
         model = BlenderActorCritic(
             env, rules=rules, actor_mode=config["actor_mode"], blender_mode=config["blender_mode"],
             blend_function=config["blend_function"], reasoner=reasoner, device=device, explain=explain,
-            valuation_model=valuation_model, logic_critic_use_only_player_pos=config["logic_critic_use_only_player_pos"]
+            valuation_model=valuation_model,
+            gamma=config["softor_gamma"]
         ).to(device)
+
+    return model, config, checkpoint_path
+
+def load_model(model_dir: Path,
+               env_kwargs_override: Optional[dict] = None,
+               step: Optional[int] = None,
+               device: Optional[torch.device] = None,
+               explain: bool = False,
+               valuation_model: Optional[BaseValuationModel] = None,
+               config_override: Optional[dict] = None
+               ):
+
+    model, config, checkpoint_path = build_model(model_dir, env_kwargs_override, step, device, explain, valuation_model, config_override)
 
     # Load the model weights
     try:
