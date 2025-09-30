@@ -12,6 +12,7 @@ build_docker_target() {
 
   # Build the Docker image
   echo "Building Docker image '$IMAGE_NAME:$image_tag'"
+  echo "Docker Context: ${PARENT_DIR}"
   docker build --no-cache --target $image_tag -t "$IMAGE_NAME:$image_tag" "$PARENT_DIR"
 
   # Build complete

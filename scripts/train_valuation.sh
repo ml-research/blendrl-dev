@@ -1,95 +1,523 @@
 #!/bin/bash
 
 VALUATION_MODEL_TYPE="mlp"
-
-# logic
-#EXTRA_ARGS="--env-max-ep-steps 3000 --extra-env-modifications disable_monkeys --actor-mode logic --reward-fn goal_with_step_penalty --blend-ent-coef 0 --concept-coef 0.01"
-# blender
-EXTRA_ARGS="--actor-mode hybrid --reward-fn default --reset-logic-actor --learn-logic-actor --reset-blending-weights --learn-blending-weights --concept-coef 0.01"
-
-NR="105_gpt"
-CUDA_DEVICES="0"
+CUDA_DEVICES="2"
 NUM_ENVS=128
 END_SEED=3
 START_SEED=0
 
-# LLM-based oracle
-ORACLE="fixed-static" # comment line to disable oracle
-#ORACLE_PROGRAM="claude_4sonnet_v3_17x17"
-ORACLE_PROGRAM="chatgpt_4o_v3_17x17"
-
-# Static oracle
-#ORACLE="relative-static"
-
-# left
-#STATIC_PREDICATES="right_of_ladder on_ladder close_by_monkey close_by_throwncoconut nothing_around"
-
-# left + right
-#STATIC_PREDICATES="on_ladder close_by_monkey close_by_throwncoconut nothing_around"
-
-# left + right + up
-#STATIC_PREDICATES="close_by_monkey close_by_throwncoconut nothing_around"
-
-# left + right + up + close_by_*
-STATIC_PREDICATES="nothing_around"
-
-VALMODEL_ARGS="--valuation-model.static-predicates ${STATIC_PREDICATES} --valuation-model.discard-missing-objects --valuation-model.use-position-difference"
-
-
-# Oracle Args
-if [[ -v ORACLE ]]; then
-  ORACLE_EXTRA_ARGS=""
-  if [[ -v ORACLE_PROGRAM ]]; then
-      ORACLE_EXTRA_ARGS="--oracle-model.program ${ORACLE_PROGRAM}"
+run_experiment()
+{
+  # Oracle Args
+  if [[ -v ORACLE ]]; then
+    ORACLE_EXTRA_ARGS=""
+    if [[ -v ORACLE_PROGRAM ]]; then
+        ORACLE_EXTRA_ARGS="--oracle-model.program ${ORACLE_PROGRAM}"
+        EXTRA_ARGS="${EXTRA_ARGS:-} --oracle-num-samples $((ORACLE_RESOLUTION * ORACLE_RESOLUTION))"
+    fi
+    ORACLE_ARGS="oracle-model:${ORACLE} --oracle-model.static-predicates ${STATIC_PREDICATES} ${ORACLE_EXTRA_ARGS}"
+  else
+    ORACLE_ARGS=""
   fi
-  ORACLE_ARGS="oracle-model:${ORACLE} --oracle-model.static-predicates ${STATIC_PREDICATES} ${ORACLE_EXTRA_ARGS}"
-else
-  ORACLE_ARGS=""
-fi
 
-# Args
-DEFAULT_ARGS="--wandb-entity ${WANDB_TEAM} \
---rules small --env-frameskip 4 \
---learn-logic-critic --reset-logic-critic --randomize-start-position --log-heatmaps-steps 200000 --save-train-data \
---env-name kangaroo --track --num-steps 128 --recover --save-steps 10000 --total-timesteps 20000000 \
---num-envs ${NUM_ENVS} \
-${EXTRA_ARGS:-} \
-valuation-model:${VALUATION_MODEL_TYPE} ${VALMODEL_ARGS:-} \
-${ORACLE_ARGS}"
+  VALMODEL_ARGS="--valuation-model.static-predicates ${STATIC_PREDICATES} --valuation-model.discard-missing-objects --valuation-model.use-position-difference --valuation-model.clip-value 0.01"
 
-# Experiment name
-BASE_EXPERIMENT_NAME="${VALUATION_MODEL_TYPE}_${NR}"
+  # Args
+  DEFAULT_ARGS="--wandb-entity ${WANDB_TEAM} \
+  --rules small \
+  --agent-path models/${ENV_NAME}_demo \
+  --randomize-start-position --log-heatmaps-steps 200000 --save-train-data \
+  --env-name ${ENV_NAME} --track --num-steps 128 --recover --save-steps 10000 \
+  --num-envs ${NUM_ENVS} \
+  ${EXTRA_ARGS:-} \
+  valuation-model:${VALUATION_MODEL_TYPE} ${VALMODEL_ARGS:-} \
+  ${ORACLE_ARGS}"
 
-# Docker GPU flag
-if [ "$CUDA_DEVICES" == "all" ]; then
-  DOCKER_GPUS="all"
-else
-  DOCKER_GPUS="\"device=$CUDA_DEVICES\""
-fi
+  # Experiment name
+  BASE_EXPERIMENT_NAME="${VALUATION_MODEL_TYPE}_${NR}"
 
-# Navigate to the parent directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PARENT_DIR="$(dirname "$SCRIPT_DIR")"
+  # Docker GPU flag
+  if [ "$CUDA_DEVICES" == "all" ]; then
+    DOCKER_GPUS="all"
+  else
+    DOCKER_GPUS="\"device=$CUDA_DEVICES\""
+  fi
 
-# iterate all seeds
-for ((SEED=START_SEED; SEED<END_SEED; SEED++)); do
+  # Navigate to the parent directory
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  PARENT_DIR="$(dirname "$SCRIPT_DIR")"
 
-  EXPERIMENT_NAME="${BASE_EXPERIMENT_NAME}_s${SEED}"
+  # iterate all seeds
+  for ((SEED=START_SEED; SEED<END_SEED; SEED++)); do
 
-  # Stop and remove container if still running
-  docker stop "${EXPERIMENT_NAME}" 2>/dev/null || true
-  docker rm "${EXPERIMENT_NAME}" 2>/dev/null || true
+    EXPERIMENT_NAME="${BASE_EXPERIMENT_NAME}_s${SEED}"
+    echo "Starting ${EXPERIMENT_NAME}"
 
-  # Run docker container in background
-  nohup docker run \
-    -v $PARENT_DIR:/app \
-    --gpus ${DOCKER_GPUS} \
-    --ipc=host --ulimit stack=67108864 \
-    --restart on-failure \
-    --name "${EXPERIMENT_NAME}" \
-    -e WANDB_API_KEY="${WANDB_API_KEY}" \
-    -e WANDB_TEAM="${WANDB_TEAM}" \
-    blendrl:base \
-    bash -c "cd /app & python train_valuation.py --exp-name ${EXPERIMENT_NAME} --seed ${SEED} ${DEFAULT_ARGS}" > /dev/null 2>&1 &
+    # Stop and remove container if still running
+    docker stop "${EXPERIMENT_NAME}" 2>/dev/null || true
+    docker rm "${EXPERIMENT_NAME}" 2>/dev/null || true
 
-done
+    # Run docker container in background
+    nohup docker run \
+      -v $PARENT_DIR:/app \
+      --gpus ${DOCKER_GPUS} \
+      --ipc=host --ulimit stack=67108864 \
+      --restart on-failure \
+      --name "${EXPERIMENT_NAME}" \
+      -e WANDB_API_KEY="${WANDB_API_KEY}" \
+      -e WANDB_TEAM="${WANDB_TEAM}" \
+      blendrl:base \
+      bash -c "cd /app & python train_valuation.py --exp-name ${EXPERIMENT_NAME} --seed ${SEED} ${DEFAULT_ARGS}" > /dev/null 2>&1 &
+
+  done
+}
+
+# ======================================================================================================================
+# 1st stage
+# BASELINES
+# ======================================================================================================================
+# Logic
+# Neural Critic / Actor; Blender  = not used
+# Logic Critic / Actor            = init. randomly; finetune
+# Valuation Functions             = init. randomly; finetune
+# No Oracle
+unset ORACLE
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Kangaroo
+# ----------------------------------------------------------------------------------------------------------------------
+EXTRA_ARGS="--reset-neural-component --reset-blending-weights --reset-logic-critic --learn-logic-critic --reset-logic-actor --learn-logic-actor --total-timesteps 10000000 --actor-mode logic --extra-env-modifications disable_monkeys --reward-fn goal_only --env-frameskip 4 --env-max-ep-steps 3000"
+ENV_NAME="kangaroo"
+NR="213"
+STATIC_PREDICATES="nothing_around"
+END_SEED=516
+START_SEED=513
+#run_experiment
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Seaquest
+# ----------------------------------------------------------------------------------------------------------------------
+EXTRA_ARGS="--reset-neural-component --reset-blending-weights --reset-logic-critic --learn-logic-critic --reset-logic-actor --learn-logic-actor --total-timesteps 10000000 --actor-mode logic --extra-env-modifications disable_enemies --reward-fn goal_only --env-frameskip 4 --env-max-ep-steps 3000"
+ENV_NAME="seaquest"
+NR="313"
+STATIC_PREDICATES="visible_diver full_divers not_full_divers oxygen_low"
+END_SEED=1027
+START_SEED=1024
+#run_experiment
+
+
+# ======================================================================================================================
+# Neural PPO (without enemies)
+# Neural Critic / Actor           = init. randomly; finetune
+# Blender; Logic Critic / Actor   = not used
+# Valuation Functions             = not used
+# No enemies
+unset ORACLE
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Kangaroo
+# ----------------------------------------------------------------------------------------------------------------------
+EXTRA_ARGS="--reset-neural-component --learn-neural-component --reset-blending-weights --reset-logic-critic --reset-logic-actor --total-timesteps 10000000 --actor-mode neural --extra-env-modifications disable_monkeys --reward-fn goal_only --env-frameskip 4 --env-max-ep-steps 3000"
+ENV_NAME="kangaroo"
+NR="214"
+STATIC_PREDICATES="nothing_around"
+END_SEED=516
+START_SEED=513
+#run_experiment
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Seaquest
+# ----------------------------------------------------------------------------------------------------------------------
+EXTRA_ARGS="--reset-neural-component --learn-neural-component --reset-blending-weights --reset-logic-critic --reset-logic-actor --total-timesteps 10000000 --actor-mode neural --extra-env-modifications disable_enemies --reward-fn goal_only --env-frameskip 4 --env-max-ep-steps 3000"
+ENV_NAME="seaquest"
+NR="314"
+STATIC_PREDICATES="visible_diver full_divers not_full_divers oxygen_low"
+END_SEED=1027
+START_SEED=1024
+#run_experiment
+# ======================================================================================================================
+
+
+# ======================================================================================================================
+# 2nd stage
+# BASELINES
+# ======================================================================================================================
+# Neural PPO
+# Neural Critic / Actor           = init. randomly; finetune
+# Blender; Logic Critic / Actor   = not used
+# Valuation Functions             = not used
+EXTRA_ARGS="--reset-neural-component --learn-neural-component --reset-blending-weights --reset-logic-critic --reset-logic-actor --total-timesteps 60000000 --actor-mode neural --reward-fn default --env-frameskip 1"
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Kangaroo
+# ----------------------------------------------------------------------------------------------------------------------
+ENV_NAME="kangaroo"
+NR="212"
+STATIC_PREDICATES="nothing_around"
+END_SEED=516
+START_SEED=513
+#run_experiment
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Seaquest
+# ----------------------------------------------------------------------------------------------------------------------
+ENV_NAME="seaquest"
+NR="312"
+STATIC_PREDICATES="visible_diver full_divers not_full_divers oxygen_low"
+END_SEED=1027
+START_SEED=1024
+#run_experiment
+
+# ======================================================================================================================
+# 2nd stage; Without oracle; Different Reward Functions (Baseline)
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Kangaroo
+# ----------------------------------------------------------------------------------------------------------------------
+BASE_ARGS="--reset-neural-component --learn-neural-component --reset-blending-weights --learn-blending-weights --logic-critic-path out_val/runs/mlp_257_gpt_cc0_3_s1 --logic-actor-path out_val/runs/mlp_257_gpt_cc0_3_s1 --valuation-model-path out_val/runs/mlp_257_gpt_cc0_3_s1 --freeze-valuation-model --total-timesteps 60000000 --actor-mode hybrid --env-frameskip 1"
+
+unset ORACLE
+ENV_NAME="kangaroo"
+STATIC_PREDICATES="nothing_around"
+END_SEED=514
+START_SEED=513
+
+EXTRA_ARGS="--reward-fn default ${BASE_ARGS}"
+NR="251_def"
+#run_experiment
+
+EXTRA_ARGS="--reward-fn goal_only ${BASE_ARGS}"
+NR="251_go"
+#run_experiment
+
+EXTRA_ARGS="--reward-fn goal_with_level ${BASE_ARGS}"
+NR="251_wl"
+#run_experiment
+
+EXTRA_ARGS="--reward-fn goal_with_death_penalty ${BASE_ARGS}"
+NR="251_wdp"
+#run_experiment
+
+EXTRA_ARGS="--reward-fn goal_with_level_and_death_penalty ${BASE_ARGS}"
+NR="251_wladp"
+#run_experiment
+
+EXTRA_ARGS="--reward-fn default_with_death_penalty ${BASE_ARGS}"
+NR="251_defwdp"
+#run_experiment
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Seaquest
+# ----------------------------------------------------------------------------------------------------------------------
+BASE_ARGS="--reset-neural-component --learn-neural-component --reset-blending-weights --learn-blending-weights --logic-critic-path out_val/runs/mlp_309_cl_s0 --logic-actor-path out_val/runs/mlp_309_cl_s0 --valuation-model-path out_val/runs/mlp_309_cl_s0 --freeze-valuation-model --total-timesteps 60000000 --actor-mode hybrid --env-frameskip 1"
+
+unset ORACLE
+ENV_NAME="seaquest"
+STATIC_PREDICATES="visible_diver full_divers not_full_divers oxygen_low"
+END_SEED=1025
+START_SEED=1024
+
+EXTRA_ARGS="--reward-fn default ${BASE_ARGS}"
+NR="351_def"
+#run_experiment
+# ======================================================================================================================
+
+
+# ======================================================================================================================
+# 1st stage
+# ======================================================================================================================
+# Logic
+# Neural Critic / Actor; Blender  = disabled
+# Logic Critic / Actor            = init. randomly; finetune
+# Valuation Functions             = init. randomly; finetune
+# Oracle                          = enabled
+END_SEED=3
+START_SEED=0
+
+# ======================================================================================================================
+# 1st stage; Different Concept Coefficients; With Concept Annealing
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Kangaroo
+# ----------------------------------------------------------------------------------------------------------------------
+BASE_ARGS="--anneal-concept-coef --reset-neural-component --reset-blending-weights --reset-logic-critic --learn-logic-critic --reset-logic-actor --learn-logic-actor --total-timesteps 10000000 --actor-mode logic --extra-env-modifications disable_monkeys --reward-fn goal_only --env-frameskip 4 --env-max-ep-steps 3000"
+ORACLE="fixed-static"
+ORACLE_RESOLUTION=49
+ENV_NAME="kangaroo"
+STATIC_PREDICATES="close_by_monkey close_by_throwncoconut nothing_around"
+
+EXTRA_ARGS="--concept-coef 0.1 ${BASE_ARGS}"
+
+NR="257_gpt_cc0_1"
+ORACLE_PROGRAM="chatgpt_4o_v7"
+#run_experiment
+
+NR="257_cl_cc0_1"
+ORACLE_PROGRAM="claude_4sonnet_v7"
+#run_experiment
+
+EXTRA_ARGS="--concept-coef 0.3 ${BASE_ARGS}"
+
+NR="257_gpt_cc0_3"
+ORACLE_PROGRAM="chatgpt_4o_v7"
+#run_experiment
+
+NR="257_cl_cc0_3"
+ORACLE_PROGRAM="claude_4sonnet_v7"
+#run_experiment
+
+EXTRA_ARGS="--concept-coef 1.0 ${BASE_ARGS}"
+
+NR="257_gpt_cc1_0"
+ORACLE_PROGRAM="chatgpt_4o_v7"
+#run_experiment
+
+NR="257_cl_cc1_0"
+ORACLE_PROGRAM="claude_4sonnet_v7"
+#run_experiment
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Seaquest
+# ----------------------------------------------------------------------------------------------------------------------
+BASE_ARGS="--anneal-concept-coef --reset-neural-component --reset-blending-weights --reset-logic-critic --learn-logic-critic --reset-logic-actor --learn-logic-actor --total-timesteps 10000000 --actor-mode logic --extra-env-modifications disable_enemies --reward-fn goal_only --env-frameskip 4 --env-max-ep-steps 3000"
+ORACLE="fixed-static"
+ORACLE_RESOLUTION=49
+ENV_NAME="seaquest"
+STATIC_PREDICATES="visible_diver full_divers not_full_divers oxygen_low close_by_missile close_by_enemy"
+
+EXTRA_ARGS="--concept-coef 0.1 ${BASE_ARGS}"
+
+NR="357_gpt_cc0_1"
+ORACLE_PROGRAM="chatgpt_4o_v7"
+#run_experiment
+
+NR="357_cl_cc0_1"
+ORACLE_PROGRAM="claude_4sonnet_v7"
+#run_experiment
+
+EXTRA_ARGS="--concept-coef 0.3 ${BASE_ARGS}"
+
+NR="357_gpt_cc0_3"
+ORACLE_PROGRAM="chatgpt_4o_v7"
+#run_experiment
+
+NR="357_cl_cc0_3"
+ORACLE_PROGRAM="claude_4sonnet_v7"
+#run_experiment
+
+EXTRA_ARGS="--concept-coef 1.0 ${BASE_ARGS}"
+
+NR="357_gpt_cc1_0"
+ORACLE_PROGRAM="chatgpt_4o_v7"
+#run_experiment
+
+NR="357_cl_cc1_0"
+ORACLE_PROGRAM="claude_4sonnet_v7"
+#run_experiment
+
+# ======================================================================================================================
+# 1st stage; Different Concept Coefficients; No Concept Annealing
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Kangaroo
+# ----------------------------------------------------------------------------------------------------------------------
+BASE_ARGS="--reset-neural-component --reset-blending-weights --reset-logic-critic --learn-logic-critic --reset-logic-actor --learn-logic-actor --total-timesteps 10000000 --actor-mode logic --extra-env-modifications disable_monkeys --reward-fn goal_only --env-frameskip 4 --env-max-ep-steps 3000"
+ORACLE="fixed-static"
+ORACLE_RESOLUTION=49
+ENV_NAME="kangaroo"
+STATIC_PREDICATES="close_by_monkey close_by_throwncoconut nothing_around"
+
+EXTRA_ARGS="--concept-coef 0.01 ${BASE_ARGS}"
+
+NR="209_gpt_cc0_01"
+ORACLE_PROGRAM="chatgpt_4o_v7"
+#run_experiment
+
+NR="209_cl_cc0_01"
+ORACLE_PROGRAM="claude_4sonnet_v7"
+#run_experiment
+
+EXTRA_ARGS="--concept-coef 0.03 ${BASE_ARGS}"
+
+NR="209_gpt_cc0_03"
+ORACLE_PROGRAM="chatgpt_4o_v7"
+#run_experiment
+
+NR="209_cl_cc0_03"
+ORACLE_PROGRAM="claude_4sonnet_v7"
+#run_experiment
+
+EXTRA_ARGS="--concept-coef 0.1 ${BASE_ARGS}"
+
+NR="209_gpt_cc0_1"
+ORACLE_PROGRAM="chatgpt_4o_v7"
+#run_experiment
+
+NR="209_cl_cc0_1"
+ORACLE_PROGRAM="claude_4sonnet_v7"
+#run_experiment
+
+EXTRA_ARGS="--concept-coef 0.3 ${BASE_ARGS}"
+
+NR="209_gpt_cc0_3"
+ORACLE_PROGRAM="chatgpt_4o_v7"
+#run_experiment
+
+NR="209_cl_cc0_3"
+ORACLE_PROGRAM="claude_4sonnet_v7"
+#run_experiment
+
+EXTRA_ARGS="--concept-coef 1.0 ${BASE_ARGS}"
+
+NR="209_gpt_cc1_0"
+ORACLE_PROGRAM="chatgpt_4o_v7"
+#run_experiment
+
+NR="209_cl_cc1_0"
+ORACLE_PROGRAM="claude_4sonnet_v7"
+#run_experiment
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Seaquest
+# ----------------------------------------------------------------------------------------------------------------------
+BASE_ARGS="--reset-neural-component --reset-blending-weights --reset-logic-critic --learn-logic-critic --reset-logic-actor --learn-logic-actor --total-timesteps 10000000 --actor-mode logic --extra-env-modifications disable_enemies --reward-fn goal_only --env-frameskip 4 --env-max-ep-steps 3000"
+ORACLE="fixed-static"
+ORACLE_RESOLUTION=49
+ENV_NAME="seaquest"
+STATIC_PREDICATES="visible_diver full_divers not_full_divers oxygen_low close_by_missile close_by_enemy"
+
+EXTRA_ARGS="--concept-coef 0.01 ${BASE_ARGS}"
+
+NR="309_gpt_cc0_01"
+ORACLE_PROGRAM="chatgpt_4o_v7"
+#run_experiment
+
+NR="309_cl_cc0_01"
+ORACLE_PROGRAM="claude_4sonnet_v7"
+#run_experiment
+
+EXTRA_ARGS="--concept-coef 0.03 ${BASE_ARGS}"
+
+NR="309_gpt_cc0_03"
+ORACLE_PROGRAM="chatgpt_4o_v7"
+#run_experiment
+
+NR="309_cl_cc0_03"
+ORACLE_PROGRAM="claude_4sonnet_v7"
+#run_experiment
+
+EXTRA_ARGS="--concept-coef 0.1 ${BASE_ARGS}"
+
+NR="309_gpt_cc0_1"
+ORACLE_PROGRAM="chatgpt_4o_v7"
+#run_experiment
+
+NR="309_cl_cc0_1"
+ORACLE_PROGRAM="claude_4sonnet_v7"
+#run_experiment
+
+EXTRA_ARGS="--concept-coef 0.3 ${BASE_ARGS}"
+
+NR="309_gpt_cc0_3"
+ORACLE_PROGRAM="chatgpt_4o_v7"
+#run_experiment
+
+NR="309_cl_cc0_3"
+ORACLE_PROGRAM="claude_4sonnet_v7"
+#run_experiment
+
+EXTRA_ARGS="--concept-coef 1.0 ${BASE_ARGS}"
+
+NR="309_gpt_cc1_0"
+ORACLE_PROGRAM="chatgpt_4o_v7"
+#run_experiment
+
+NR="309_cl_cc1_0"
+ORACLE_PROGRAM="claude_4sonnet_v7"
+#run_experiment
+# ======================================================================================================================
+
+
+# ======================================================================================================================
+# 2nd stage
+# ======================================================================================================================
+
+# Hybrid
+# Neural Critic / Actor; Blender  = init. randomly; finetune
+# Logic Critic / Actor            = init. from 1st experiment; frozen
+# Valuation Functions             = init. from 1st experiment; frozen
+# Oracle                          = enabled (blender predicates)
+
+# ======================================================================================================================
+# 2nd stage; c_CA=0.3; CA-annealing; Different Reward Functions
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Kangaroo
+# ----------------------------------------------------------------------------------------------------------------------
+
+ENV_NAME="kangaroo"
+STATIC_PREDICATES="nothing_around"
+END_SEED=516
+START_SEED=515
+ORACLE="fixed-static"
+ORACLE_RESOLUTION=49
+
+# ChatGPT
+BASE_ARGS="--anneal-concept-coef --concept-coef 0.3 --reset-neural-component --learn-neural-component --reset-blending-weights --learn-blending-weights --logic-critic-path out_val/runs/mlp_257_gpt_cc0_3_s1 --logic-actor-path out_val/runs/mlp_257_gpt_cc0_3_s1 --valuation-model-path out_val/runs/mlp_257_gpt_cc0_3_s1 --freeze-valuation-model --total-timesteps 60000000 --actor-mode hybrid --env-frameskip 1"
+ORACLE_PROGRAM="chatgpt_4o_v7"
+
+EXTRA_ARGS="--reward-fn default ${BASE_ARGS}"
+NR="216_gpt_def"
+#run_experiment
+
+EXTRA_ARGS="--reward-fn goal_only ${BASE_ARGS}"
+NR="216_gpt_go"
+#run_experiment
+
+# Claude
+BASE_ARGS="--anneal-concept-coef --concept-coef 0.3 --reset-neural-component --learn-neural-component --reset-blending-weights --learn-blending-weights --logic-critic-path out_val/runs/mlp_257_cl_cc0_3_s1 --logic-actor-path out_val/runs/mlp_257_cl_cc0_3_s1 --valuation-model-path out_val/runs/mlp_257_cl_cc0_3_s1 --freeze-valuation-model --total-timesteps 60000000 --actor-mode hybrid --env-frameskip 1"
+ORACLE_PROGRAM="claude_4sonnet_v7"
+
+EXTRA_ARGS="--reward-fn default ${BASE_ARGS}"
+NR="216_cl_def"
+#run_experiment
+
+EXTRA_ARGS="--reward-fn goal_only ${BASE_ARGS}"
+NR="216_cl_go"
+#run_experiment
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Seaquest
+# ----------------------------------------------------------------------------------------------------------------------
+ENV_NAME="seaquest"
+STATIC_PREDICATES="visible_diver full_divers not_full_divers oxygen_low"
+END_SEED=1027
+START_SEED=1026
+ORACLE="fixed-static"
+ORACLE_RESOLUTION=49
+
+# ChatGPT
+BASE_ARGS="--anneal-concept-coef --concept-coef 0.3 --reset-neural-component --learn-neural-component --reset-blending-weights --learn-blending-weights --logic-critic-path out_val/runs/mlp_309_gpt_s0 --logic-actor-path out_val/runs/mlp_309_gpt_s0 --valuation-model-path out_val/runs/mlp_309_gpt_s0 --freeze-valuation-model --total-timesteps 60000000 --actor-mode hybrid --env-frameskip 1"
+ORACLE_PROGRAM="chatgpt_4o_v7"
+
+EXTRA_ARGS="--reward-fn default ${BASE_ARGS}"
+NR="316_gpt_def"
+#run_experiment
+
+EXTRA_ARGS="--reward-fn goal_only ${BASE_ARGS}"
+NR="316_gpt_go"
+#run_experiment
+
+# Claude
+BASE_ARGS="--anneal-concept-coef --concept-coef 0.3 --reset-neural-component --learn-neural-component --reset-blending-weights --learn-blending-weights --logic-critic-path out_val/runs/mlp_309_cl_s0 --logic-actor-path out_val/runs/mlp_309_cl_s0 --valuation-model-path out_val/runs/mlp_309_cl_s0 --freeze-valuation-model --total-timesteps 60000000 --actor-mode hybrid --env-frameskip 1"
+ORACLE_PROGRAM="claude_4sonnet_v7"
+
+EXTRA_ARGS="--reward-fn default ${BASE_ARGS}"
+NR="316_cl_def"
+#run_experiment
+
+EXTRA_ARGS="--reward-fn goal_only ${BASE_ARGS}"
+NR="316_cl_go"
+#run_experiment
+# ======================================================================================================================
