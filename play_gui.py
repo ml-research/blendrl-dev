@@ -1,10 +1,10 @@
+from pathlib import Path
 from typing import Optional
 
-import torch
 import tyro
 
 from blendrl.renderer import Renderer
-from valuation.utils import ValuationExperiment
+from valuation.experiment import ValuationExperiment
 
 
 def main(
@@ -17,21 +17,20 @@ def main(
 ) -> None:
 
     # load predicate model
-    experiment = ValuationExperiment.from_name(exp_name)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    valuation_model = experiment.get_valuation_model(device)
+    if exp_name != "":
+        experiment = ValuationExperiment.from_name(exp_name)
+    else:
+        experiment = ValuationExperiment.from_path(Path(agent_path))
 
     # create renderer
     renderer = Renderer(
-        agent_path=agent_path,
-        env_name=env_name,
+        experiment,
         fps=fps,
         deterministic=False,
-        env_kwargs=dict(render_oc_overlay=True),
-        render_predicate_probs=True,
+        env_kwargs=dict(render_oc_overlay=True, **experiment.env_config),
+        render_predicate_probs=experiment.config.actor_mode in ("hybrid", "logic"),
         seed=seed,
         predicate_name=predicate_name,
-        valuation_model=valuation_model,
     )
 
     # run renderer
