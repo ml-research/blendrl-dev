@@ -14,7 +14,10 @@ from matplotlib.patches import Patch
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from scipy.stats import binned_statistic_2d
 import imageio.v2 as iio
+from matplotlib.colors import ListedColormap
 
+from nsfr import NSFReasoner
+from nsfr.utils.logic import get_indices_by_predname
 from utils import to_np, FRAME_SIZE
 from valuation.models.base import BaseValuationModel
 
@@ -28,6 +31,16 @@ def get_cmap(cmap: Cmap, masked_color=None) -> Colormap:
         return _cmap
 
     return cmap
+
+def make_transparent_cmap(cmap, N=256, K=32):
+    if isinstance(cmap, str):
+        cmap = plt.cm.get_cmap(cmap, N)
+    else:
+        cmap = cmap
+
+    colors = cmap(np.linspace(0, 1, N))
+    colors[:K, -1] = np.linspace(0, 1, K)  # modify alpha channel
+    return ListedColormap(colors)
 
 def create_heatmap_fig(
         H: np.ndarray,
@@ -190,7 +203,7 @@ def fig_add_legend(fig: plt.Figure, labels: List[Tuple[str, Any]]) -> Legend:
 
     return legend
 
-def get_heatmap(x: np.ndarray, y: np.ndarray, values: np.ndarray, bins: (int, int), range: ((float, float), (float, float)), mode: str = "mean") -> np.ndarray:
+def get_heatmap(x: np.ndarray, y: np.ndarray, values: Optional[np.ndarray], bins: (int, int), range: ((float, float), (float, float)), mode: str = "mean") -> np.ndarray:
     heatmap, _, _, _ = binned_statistic_2d(
         x, y, values,
         statistic=mode,
@@ -199,43 +212,52 @@ def get_heatmap(x: np.ndarray, y: np.ndarray, values: np.ndarray, bins: (int, in
     )
     return heatmap
 
-def fig_add_title(fig: plt.Figure, title: str, subtitle: Optional[str] = None) -> (plt.Text, Optional[plt.Text]):
+def fig_add_title(fig: plt.Figure, title: str, subtitle: Optional[str] = None, **kwargs) -> (plt.Text, Optional[plt.Text]):
     ax = fig.gca()
 
     if subtitle is not None:
-        title_text = fig.suptitle(title, fontsize=10, y=0.95)
+        title_text = fig.suptitle(title, fontsize=10, y=0.95, **kwargs)
         subtitle_text = ax.set_title(subtitle, fontsize=8)
     else:
-        title_text = ax.set_title(title)
+        title_text = ax.set_title(title, **kwargs)
         subtitle_text = None
 
     return (title_text, subtitle_text)
 
-def save_fig(fig: plt.Figure, path: Path, close_fig: bool = True, *args, **kwargs):
-    fig.tight_layout()
-    fig.savefig(path, dpi=150, bbox_inches="tight", *args, **kwargs)
+def save_fig(fig: plt.Figure, path: Path, close_fig: bool = True, tight_layout: bool = True, *args, **kwargs):
+    default_kwargs = dict(dpi=150)
+    if tight_layout:
+        fig.tight_layout()
+        default_kwargs["bbox_inches"] = "tight"
+    default_kwargs.update(kwargs)
+    fig.savefig(path, *args, **default_kwargs)
+    print(f"Saved figure to {path}")
     if close_fig:
         plt.close(fig)
 
 
-def discretize_frame(env_name: str, resolution: int, device: th.device, position: Optional[Tuple[float, float]] = None) -> Tuple[th.Tensor, Tuple[int, int]]:
-    frame_size = FRAME_SIZE[env_name]
+def _discretize_frame(frame, resolution: int, device: th.device, position: Optional[Tuple[float, float]] = None, dtype=th.int) -> Tuple[th.Tensor, Tuple[int, int]]:
+    frame_size = (frame[0][1] - frame[0][0], frame[1][1] - frame[1][0])
     min_dim = min(frame_size)
     cell_size = min_dim / resolution
     grid_shape = (int(frame_size[0] // cell_size), int(frame_size[1] // cell_size))
     num_grid_cells = grid_shape[0] * grid_shape[1]
 
-    result = th.tensor([1, 0, 0, 0], device=device).repeat(num_grid_cells, 1)
+    result = th.tensor([1, 0, 0, 0], device=device, dtype=dtype).repeat(num_grid_cells, 1)
     idx = 0
     for i in range(grid_shape[0]):
-        x = cell_size * (i + 0.5) if position is None else position[0]
+        x = cell_size * (i + 0.5) + frame[0][0] if position is None else position[0]
         for j in range(grid_shape[1]):
-            y = cell_size * (j + 0.5) if position is None else position[1]
+            y = cell_size * (j + 0.5) + frame[1][0] if position is None else position[1]
             result[idx, 1] = x
             result[idx, 2] = y
             idx += 1
 
     return result, grid_shape
+
+def discretize_frame(env_name: str, resolution: int, device: th.device, position: Optional[Tuple[float, float]] = None, dtype=th.int) -> Tuple[th.Tensor, Tuple[int, int]]:
+    frame_size = FRAME_SIZE[env_name]
+    return _discretize_frame([[0, frame_size[0]], [0, frame_size[1]]], resolution, device, position, dtype)
 
 
 def get_predicate_heatmaps(valuation_model: BaseValuationModel, predicate_name: str, player_input: th.Tensor, obj_inputs: List[th.Tensor], frame_shape: (int, int), include_overlay: bool) -> List[np.ndarray]:
@@ -255,6 +277,21 @@ def get_predicate_heatmaps(valuation_model: BaseValuationModel, predicate_name: 
     return heatmaps
 
 
+def get_logic_actor_predicate_heatmap(logic_actor: NSFReasoner, player_input: th.Tensor, obj_input: th.Tensor, pred_names: List[str], frame_shape: (int, int)) -> List[np.ndarray]:
+    x = obj_input
+    x[:, 0] = player_input
+    logic_actor(x)
+
+    heatmaps = []
+    for pred_name in pred_names:
+        indices = get_indices_by_predname(pred_name, logic_actor.atoms)
+        values = th.max(logic_actor.V_T[:, indices], dim=1)[0].view(*frame_shape)
+        heatmap = to_np(values).T
+        heatmaps.append(heatmap)
+
+    return heatmaps
+
+
 def get_logic_critic_heatmap(logic_critic: th.nn.Module, player_input: th.Tensor, obj_input: th.Tensor, frame_shape: (int, int)) -> np.ndarray:
     x = obj_input
     x[:, 0] = player_input
@@ -266,7 +303,7 @@ def get_logic_critic_heatmap(logic_critic: th.nn.Module, player_input: th.Tensor
 
 class Animator:
 
-    def __init__(self, fig: plt.Figure, path: Path, fps: float = 25, codec: str = 'libx264', quality: int = 8, dpi: int = 150):
+    def __init__(self, fig: plt.Figure, path: Path, fps: float = 25, codec: str = 'libx264', quality: int = 8, dpi: int = 150, **kwargs):
         self.fig = fig
         self.path = path
         self.fps = fps
@@ -279,13 +316,16 @@ class Animator:
             fps=self.fps,
             codec=self.codec,
             quality=self.quality,  # Quality (lower is better; 0-10 range)
+            **kwargs
         )
 
-    def append(self):
+    def append(self, **kwargs):
         buf = BytesIO()
-        self.fig.savefig(buf, dpi=self.dpi, format='png', bbox_inches='tight')
+        default_kwargs = dict(dpi=self.dpi, format='png', bbox_inches='tight')
+        default_kwargs.update(kwargs)
+        self.fig.savefig(buf, **default_kwargs)
         buf.seek(0)
-        img = np.array(Image.open(buf).convert("RGB"))
+        img = np.array(Image.open(buf).convert("RGBA"))
         self._writer.append_data(img)
 
     def save_still(self, path: Path):
