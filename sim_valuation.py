@@ -1,17 +1,17 @@
 import shutil
 import time
 from pathlib import Path
-from typing import Optional, Literal
+from typing import Optional, Literal, List
 
 import numpy as np
 import torch
 import tyro
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from rtpt import RTPT
 
 from blendrl.agents.blender_agent import BlenderActorCritic
 from blendrl.env_vectorized import VectorizedNudgeBaseEnv
-from utils import get_default_device, to_np, ArrayIO
+from utils import get_default_device, to_np, ArrayIO, optional
 from valuation.experiment import ValuationExperiment
 
 
@@ -29,8 +29,21 @@ class Args:
     """Number of environments"""
     overwrite: bool = False
     "Whether to overwrite existing results"
+
     actor_mode: Optional[Literal["hybrid", "neural", "logic"]] = None
     """The actor mode"""
+    extra_env_modifications: List[str] = field(default_factory=list)
+    """extra modifications that shall be applied to the environments"""
+    env_max_ep_steps: Optional[int] = None
+    """maximum steps after which an episode is reset"""
+    env_frameskip: Optional[int] = None
+    """frames to skip"""
+    reward_fn: Optional[str] = None
+    """the reward function"""
+    use_oracle: bool = False
+    """whether to use the oracle instead of the valuation model"""
+    reset_logic_actor: bool = False
+    """whether to reset weights of the logic actor"""
 
     # Used if no valuation experiment is specified
     agent_path: str = "models/kangaroo_demo"
@@ -53,22 +66,28 @@ def main():
     else:
         experiment = ValuationExperiment.from_path(Path(args.agent_path))
 
-    # Overwrite actor mode
-    if args.actor_mode is not None:
-        experiment.config.actor_mode = args.actor_mode
+    # Overwrite env config
+    experiment.config.actor_mode = optional(args.actor_mode, experiment.config.actor_mode)
+    experiment.config.extra_env_modifications = optional(args.extra_env_modifications, experiment.config.extra_env_modifications)
+    experiment.config.env_max_ep_steps = optional(args.env_max_ep_steps, experiment.config.env_max_ep_steps)
+    experiment.config.env_frameskip = optional(args.env_frameskip, experiment.config.env_frameskip)
+    experiment.config.reward_fn = optional(args.reward_fn, experiment.config.reward_fn)
 
-    # Overwrite max env steps
-    experiment.config.env_max_ep_steps = None
 
+    if args.use_oracle:
+        experiment.config.valuation_model = experiment.config.oracle_model
     agent: BlenderActorCritic = experiment.get_model(device)
-    env_kwargs = experiment.env_config
-
+    if args.reset_logic_actor:
+        im = agent.actor.logic_actor.im
+        im.W = torch.nn.Parameter(im.init_identity_weights(device))
     agent.eval()
 
     # Load environments
+    env_kwargs = experiment.env_config
     envs = VectorizedNudgeBaseEnv.from_name(
         experiment.env_name, n_envs=num_envs, mode="blender", seed=args.seed, **env_kwargs
     )
+    envs.reset()
 
     # Collect data
     blender_predicates = agent.blender.prednames
@@ -86,7 +105,7 @@ def main():
     rtpt.start()
 
     # Start simulation
-    data_dir = experiment.logs_dir / f"test_{experiment.config.actor_mode}"
+    data_dir = experiment.logs_dir / (f"test_{experiment.config.actor_mode}" + ("_oracle" if args.use_oracle else ""))
     if args.overwrite and data_dir.exists():
        shutil.rmtree(data_dir)
     writer = ArrayIO(data_dir)
@@ -125,7 +144,8 @@ def main():
             env_dur += time.time() - t0
 
             # Gather pre-step data
-            writer.append("logic_obs", to_np(_logic_obs))
+            ep_mask = current_ep_indices < args.num_episodes
+            writer.append("logic_obs", to_np(_logic_obs)[ep_mask])
 
             # Get next action
             _logic_obs = torch.tensor(_logic_obs, device=device)
@@ -140,20 +160,20 @@ def main():
             inf_dur += time.time() - t0
 
             # Gather post-step data
-            writer.append("ep_indices", current_ep_indices)
-            writer.append("actions", to_np(action))
-            writer.append("blending_weights", to_np(_blending_weights))
-            writer.append("neural_action_probs", to_np(agent.actor.neural_action_probs))
-            writer.append("logic_action_probs",to_np(agent.actor.logic_action_probs))
-            writer.append("neural_values",to_np(_neural_values))
-            writer.append("logic_values",to_np(_logic_values))
-            writer.append("rewards",np.array(reward))
+            writer.append("ep_indices", current_ep_indices[ep_mask])
+            writer.append("actions", to_np(action)[ep_mask])
+            writer.append("blending_weights", to_np(_blending_weights)[ep_mask])
+            writer.append("neural_action_probs", to_np(agent.actor.neural_action_probs)[ep_mask])
+            writer.append("logic_action_probs",to_np(agent.actor.logic_action_probs)[ep_mask])
+            writer.append("neural_values",to_np(_neural_values)[ep_mask])
+            writer.append("logic_values",to_np(_logic_values)[ep_mask])
+            writer.append("rewards",np.array(reward)[ep_mask])
 
             if agent.logic_actor.V_T != []:
-                writer.append("action_predicate_probs", to_np(agent.logic_actor.get_predictions(agent.logic_actor.V_T, action_predicates)))
+                writer.append("action_predicate_probs", to_np(agent.logic_actor.get_predictions(agent.logic_actor.V_T, action_predicates))[ep_mask])
 
             if agent.blender.V_T != []:
-                writer.append("blender_predicate_probs", to_np(agent.blender.get_predictions(agent.blender.V_T, blender_predicates)))
+                writer.append("blender_predicate_probs", to_np(agent.blender.get_predictions(agent.blender.V_T, blender_predicates))[ep_mask])
 
             global_step += num_envs
 
@@ -161,19 +181,24 @@ def main():
             game_returns += np.array(reward)
             if global_ep < args.num_episodes:
                 for k, info in enumerate(infos):
-                    if "episode" in info:
-                        writer.append("ep_lengths", np.array(info["episode"]["l"]))
-                        writer.append("ep_returns", np.array(info["episode"]["r"]))
-                        writer.append("ep_game_returns", np.array(game_returns[k]))
-                        game_returns[k] = 0
+                    if current_ep_indices[k] < args.num_episodes:
+                        # collect custom info
+                        for custom_key, custom_value in info.get("_custom", {}).items():
+                            writer.append(f"custom_{custom_key}", np.array(custom_value))
 
-                        current_ep_indices[k] = max(current_ep_indices) + 1
+                        if "episode" in info:
+                            writer.append("ep_lengths", np.array(info["episode"]["l"]))
+                            writer.append("ep_returns", np.array(info["episode"]["r"]))
+                            writer.append("ep_game_returns", np.array(game_returns[k]))
+                            game_returns[k] = 0
 
-                        global_ep += 1
-                        rtpt.step(f"{global_ep}/{args.num_episodes}")
+                            current_ep_indices[k] = max(current_ep_indices) + 1
 
-                        if global_ep >= args.num_episodes:
-                            break
+                            global_ep += 1
+                            rtpt.step(f"{global_ep}/{args.num_episodes}")
+
+                            if global_ep >= args.num_episodes:
+                                break
 
             # Break program if end has reached
             if (args.num_episodes is None or global_ep >= args.num_episodes) and (args.num_steps is None or global_step >= args.num_steps):
