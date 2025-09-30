@@ -305,11 +305,16 @@ def to_np(tensor: torch.Tensor) -> np.ndarray:
     return tensor.detach().cpu().numpy()
 
 
-def running_average(arr: np.ndarray, window: int) -> np.ndarray:
+def running_average(arr: np.ndarray, window: int, center: bool = False) -> np.ndarray:
     result = np.empty_like(arr, dtype=float)
     for i in range(len(arr)):
-        start = max(0, i - window + 1)
-        result[i] = np.mean(arr[start:i+1])
+        if not center:
+            start = max(0, i - window + 1)
+            end = i+1
+        else:
+            start = max(0, i - window // 2)
+            end = min(len(arr), i + window // 2)
+        result[i] = np.mean(arr[start:end])
     return result
 
 

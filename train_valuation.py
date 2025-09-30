@@ -413,9 +413,9 @@ def main():
                 mb_inds = b_inds[start:end]
 
                 # Action probability
-                _, newlogprob, entropy, blend_entropy, newvalue = (
+                _, newlogprob, entropy, blend_entropy, newvalue, new_blending_weights = (
                     agent.get_action_and_value(
-                        b_obs[mb_inds], b_logic_obs[mb_inds], b_actions.long()[mb_inds]
+                        b_obs[mb_inds], b_logic_obs[mb_inds], b_actions.long()[mb_inds], return_blending_weights=True
                     )
                 )
                 logratio = newlogprob - b_logprobs[mb_inds]
@@ -450,7 +450,7 @@ def main():
                         newvalue - b_values[mb_inds],
                         -args.clip_coef,
                         args.clip_coef,
-                    )
+                        )
                     v_loss_clipped = (v_clipped - b_returns[mb_inds]) ** 2
                     v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
                     v_loss = 0.5 * v_loss_max.mean()
@@ -484,8 +484,12 @@ def main():
 
                 fin_concept_loss *= concept_coef
 
+                # Neural penalty loss
+                neural_penalty_loss = new_blending_weights[:, 0].mean()
+                fin_neural_penalty_loss = args.neural_penalty_coef * neural_penalty_loss
+
                 # Total loss
-                loss = pg_loss + joint_entropy_loss + fin_v_loss + fin_concept_loss
+                loss = pg_loss + joint_entropy_loss + fin_v_loss + fin_concept_loss + fin_neural_penalty_loss
 
                 # Backpropagation
                 optimizer.zero_grad()
@@ -541,6 +545,8 @@ def main():
         writer.add_scalar("losses/blend_entropy", blend_entropy_loss.item(), global_step)
         writer.add_scalar("losses/fin_blend_entropy_loss", fin_blend_entropy_loss.item(), global_step)
         writer.add_scalar("losses/joint_entropy_loss", joint_entropy_loss.item(), global_step)
+        writer.add_scalar("losses/neural_penalty_loss", neural_penalty_loss.item(), global_step)
+        writer.add_scalar("losses/fin_neural_penalty_loss", fin_neural_penalty_loss.item(), global_step)
         writer.add_scalar("losses/old_approx_kl", old_approx_kl.item(), global_step)
         writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
         writer.add_scalar("losses/clipfrac", np.mean(clipfracs), global_step)

@@ -151,6 +151,8 @@ class ValuationConfig:
     """probability of dropping objects in the environment"""
     #atom_ent_coef: float = 0.00
     #"""coefficient of the atom values"""
+    save_atom_gradient_data: bool = False
+    """whether to save data of the atom gradients"""
 
     # Reset, finetune, overwrite and modify components
     ## Neural critic + actor
@@ -164,6 +166,8 @@ class ValuationConfig:
     """whether to randomize the blending weights"""
     learn_blending_weights: bool = False
     """whether to finetune the blending weights"""
+    neural_penalty_coef: float = 0.0
+    """coefficient for penalizing activation of neural agent"""
 
     ## Logic Critic
     reset_logic_critic: bool = False
