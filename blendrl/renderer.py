@@ -3,6 +3,7 @@ from typing import Union
 
 import numpy as np
 import pygame
+import torch
 import torch as th
 from matplotlib.cm import get_cmap
 
@@ -10,6 +11,7 @@ from nudge.agents.logic_agent import NsfrActorCritic
 from nudge.agents.neural_agent import ActorCritic
 from nudge.env import NudgeBaseEnv
 from nudge.utils import load_model, yellow
+from valuation.experiment import ValuationExperiment
 
 SCREENSHOTS_BASE_PATH = "out/screenshots/"
 PREDICATE_PROBS_COL_WIDTH = 500 * 2
@@ -27,8 +29,7 @@ class Renderer:
 
     def __init__(
         self,
-        agent_path: str = None,
-        env_name: str = "seaquest",
+        experiment: ValuationExperiment = None,
         device: str = "cpu",
         fps: int = None,
         deterministic=True,
@@ -36,20 +37,20 @@ class Renderer:
         render_predicate_probs=True,
         seed=0,
         predicate_name=None,
-        valuation_model=None,
     ):
 
+        self.experiment = experiment
         self.fps = fps
         self.deterministic = deterministic
         self.render_predicate_probs = render_predicate_probs
         self.predicate_name = predicate_name
 
         # Load model and environment
-        self.model = load_model(
-            agent_path, env_kwargs_override=env_kwargs, device=device, valuation_model=valuation_model
-        )
+        device = torch.device(device)
+        self.model = experiment.get_model(device)
+        experiment.parameter_summary.print()
         self.env = NudgeBaseEnv.from_name(
-            env_name, mode="deictic", seed=seed, **env_kwargs
+            experiment.env_name, mode="deictic", seed=seed, **env_kwargs
         )
         # self.env = self.model.env
         self.env.reset()
@@ -74,7 +75,13 @@ class Renderer:
                 )
             )
             self.action_meanings = None
-            self.keys2actions = {}
+            self.keys2actions = {
+                (pygame.K_w,): self.env.pred2action.get("up", 0),
+                (pygame.K_a,): self.env.pred2action.get("left", 0),
+                (pygame.K_s,): self.env.pred2action.get("down", 0),
+                (pygame.K_d,): self.env.pred2action.get("right", 0),
+                (pygame.K_SPACE,): self.env.pred2action.get("fire", 0)
+            }
         self.current_keys_down = set()
 
         self.predicates = self.model.logic_actor.prednames
@@ -136,7 +143,7 @@ class Renderer:
 
                 if self.reset:
                     done = True
-                    new_obs = self.env.reset()
+                    (new_obs, new_obs_nn) = self.env.reset()
                     self._render(new_obs)
 
                 obs = new_obs
@@ -209,7 +216,8 @@ class Renderer:
     def _render(self, logic_obs):
         self.window.fill((20, 20, 20))  # clear the entire window
         self._render_policy_probs()
-        self._render_predicate_probs()
+        if self.render_predicate_probs:
+            self._render_predicate_probs()
         self._render_neural_probs()
         self._render_env()
         if self.predicate_name is not None:
@@ -406,13 +414,20 @@ class Renderer:
             self.window.blit(text, text_rect)
 
     def _render_facts_heatmap(self, predname: str, logic_obs):
-        nsfr = self.model.actor.logic_actor
+        blender_prednames = ['neural_agent', 'logic_agent']
+        is_blender_pred = predname in blender_prednames
+
+        actor = self.model.actor
+        nsfr = actor.logic_actor
 
         # get indices of all atoms belonging to the given predicate
-        atom_indices = []
-        for i, atom in enumerate(nsfr.atoms):
-            if atom.pred.name == predname:
-                atom_indices.append(i)
+        if not is_blender_pred:
+            atom_indices = []
+            for i, atom in enumerate(nsfr.atoms):
+                if atom.pred.name == predname:
+                    atom_indices.append(i)
+        else:
+            atom_indices = [blender_prednames.index(predname)]
 
         observation_size = self.env.env.image_size
         cell_size = (10, 10)
@@ -437,12 +452,16 @@ class Renderer:
 
         with th.no_grad():
             # forward reasoning
-            nsfr(new_logic_obs)
+            if not is_blender_pred:
+                nsfr(new_logic_obs)
+                values = nsfr.V_T
+            else:
+                values = actor.to_blender_policy_distribution(None, new_logic_obs)
 
             idx = 0
             for c_x in range(grid_size[0]):
                 for c_y in range(grid_size[1]):
-                    v_T = nsfr.V_T[idx]
+                    v_T = values[idx]
 
                     # calculate max atom value for current cell
                     for atom_idx in atom_indices:
