@@ -32,15 +32,19 @@ def reward_function(self) -> float:
     prev_level_idx = self._reward_fn_state["level_idx"]
 
     reward = 0.0
+    self.set_custom_info("reached_child", False)
+    self.set_custom_info("reached_next_level", False)
 
     # if player moved one level up, give reward and update reward fn state
     if not new_ep and current_level_idx > prev_level_idx:
         reward += 0.5
+        self.set_custom_info("reached_next_level", True)
 
         # if player reached child, give additional reward and reset reward fn state
         if current_level_idx == len(levels) - 1:
             reward += 0.5
             self._reward_fn_state["level_idx"] = None
+            self.set_custom_info("reached_child", True)
         else:
             self._reward_fn_state["level_idx"] = current_level_idx
 

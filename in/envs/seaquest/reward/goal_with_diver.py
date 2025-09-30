@@ -27,8 +27,11 @@ def reward_function(self) -> float:
     prev_num_collected_divers = self._reward_fn_state["num_collected_divers"]
 
     reward = 0.0
+    self.set_custom_info("rescued_divers", False)
+
     if self.org_reward == 1.0 and player.y == 46:
         # when rescued 6 divers
+        self.set_custom_info("rescued_divers", True)
         reward = 1.0
     elif num_collected_divers > prev_num_collected_divers:
         reward = (num_collected_divers - prev_num_collected_divers) * 0.5

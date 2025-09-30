@@ -1,7 +1,8 @@
 from typing import Dict, Any
 
+from hackatari import HackAtari
 
-def reward_function(self) -> float:
+def reward_function(self: HackAtari) -> float:
     for obj in self.objects:
         if 'player' in str(obj).lower():
             player = obj
@@ -23,9 +24,10 @@ def reward_function(self) -> float:
     if current_lives < prev_lives:
         reward -= 1.0
 
-    # if player reached child, give reward
     if player.y == 4 and player.prev_y != 4:
+        reward += 20.0
         self.set_custom_info("reached_child", True)
+    elif self.org_reward == 1.0 and player.prev_y != 4:
         reward += 1.0
 
     self._reward_fn_state["lives"] = current_lives
