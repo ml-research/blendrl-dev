@@ -77,6 +77,8 @@ class HackAtari(OCAtari):
         # Initialize modifications and environment settings
         self.step_modifs, self.reset_modifs, self.post_detection_modifs = [], [], []
 
+        self._info = dict()
+
         # Load modification functions dynamically
         try:
             modif_module = importlib.import_module(
@@ -144,6 +146,12 @@ class HackAtari(OCAtari):
                 print(f"Invalid difficulty. Available difficulties: \
                     {self.env.env.ale.getAvailableDifficulties()}")
                 exit()
+
+    def set_custom_info(self, key, value):
+        self._info[key] = value
+
+    def reset_custom_info(self):
+        self._info.clear()
 
     def step(self, *args, **kwargs):
         """
@@ -218,6 +226,9 @@ class HackAtari(OCAtari):
             else:
                 obs = merged_org
 
+        # add custom info
+        info["_custom"] = self._info.copy()
+
         return obs, total_reward, terminated, truncated, info
 
     def step_with_lm_reward(self, action):
@@ -246,6 +257,10 @@ class HackAtari(OCAtari):
         info["all_rewards"] = rewards
         reward = sum(rewards)
         info["org_return"] = self.org_return
+
+        # add custom info
+        info["_custom"] = self._info.copy()
+
         return obs, reward, truncated, terminated, info
 
     def reset(self, *args, **kwargs):
@@ -262,6 +277,9 @@ class HackAtari(OCAtari):
             func()
         for func in self.post_detection_modifs:
             func()
+
+        # reset custom info
+        self.reset_custom_info()
 
         return obs, info
 
