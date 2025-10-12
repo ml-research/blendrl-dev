@@ -93,3 +93,201 @@ You add a new environment inside `in/envs/[new_env_name]/`. There, you need to d
 * **action mapping**: action-predicates predicted by the agent need to be mapped to the actual env actions
 
 See the `freeway` env to see how it is done.
+
+
+# Plots
+
+**Preparation:**
+```bash
+mkdir plots
+mkdir plots/predicate_valuation
+mkdir plots/curves
+```
+
+**Kangaroo 1st stage:** (Fig. 5.1)
+```bash
+python3 -m plot.plot_predicate_valuation \
+  --exp-name original_kangaroo claude_kangaroo chatgpt_kangaroo mlp_257_cl_cc0_3_s1 mlp_257_gpt_cc0_3_s1 \
+  --predicate-name left_of_ladder right_of_ladder on_ladder \
+  --position Ladder_1 Ladder_2 Ladder_3 \
+  --plots valuation_overlay \
+  --contour-objects Ladder Platform \
+  --save-grid \
+  --grid-labels "BlendRL" "Claude" "ChatGPT" "Ours (Claude)" "Ours (ChatGPT)" \
+  --resolution 256 \
+  --value-colorbar-index 0 \
+  --grid-filename "kangaroo_1st" \
+  --grid-title "Kangaroo"
+```
+
+**Seaquest 1st stage:** (Fig. 5.2)
+```bash
+python3 -m plot.plot_predicate_valuation \
+  --exp-name original_seaquest claude_seaquest chatgpt_seaquest mlp_357_cl_cc0_1_s0 mlp_357_gpt_cc0_3_s1 \
+  --predicate-name left_of_diver right_of_diver higher_than_diver deeper_than_diver \
+  --position 5 \
+  --plots valuation_overlay \
+  --save-grid \
+  --grid-labels "BlendRL" "Claude" "ChatGPT" "Ours (Claude)" "Ours (ChatGPT)" \
+  --resolution 256 \
+  --value-colorbar-index 0 \
+  --grid-filename "seaquest_1st" \
+  --grid-title "Seaquest"
+```
+
+**Neural blending weights:** (Fig. 5.3)
+
+Kangaroo (ep0):
+```bash
+python3 -m plot.plot_simulation \
+  --sim-name test_hybrid \
+  --exp-name mlp_216_gpt_def_s513
+```
+
+Seaquest (ep1):
+```bash
+python3 -m plot.plot_simulation \
+  --sim-name test_hybrid \
+  --exp-name mlp_316_gpt_def_s1024
+```
+
+**Kangaroo 2nd stage:** (Fig. 5.5)
+```bash
+python3 -m plot.plot_predicate_valuation \
+  --exp-name original_kangaroo claude_kangaroo chatgpt_kangaroo mlp_216_cl_def_s515 mlp_216_gpt_def_s513 \
+  --predicate-name close_by_monkey close_by_throwncoconut \
+  --position 5 \
+  --plots valuation_overlay \
+  --contour-objects Ladder Platform \
+  --save-grid \
+  --grid-labels "BlendRL" "Claude" "ChatGPT" "Ours (Claude)" "Ours (ChatGPT)" \
+  --resolution 256 \
+  --value-colorbar-index 0 \
+  --grid-filename "kangaroo_2nd" \
+  --grid-title "Kangaroo"
+```
+
+**Seaquest 2nd stage:** (Fig. 5.6)
+```bash
+python3 -m plot.plot_predicate_valuation \
+  --exp-name original_seaquest claude_seaquest chatgpt_seaquest mlp_316_cl_def_s1024 mlp_316_gpt_def_s1024 \
+  --predicate-name close_by_enemy close_by_missile \
+  --position 5 \
+  --plots valuation_overlay \
+  --save-grid \
+  --grid-labels "BlendRL" "Claude" "ChatGPT" "Ours (Claude)" "Ours (ChatGPT)" \
+  --resolution 256 \
+  --value-colorbar-index 0 \
+  --grid-filename "seaquest_2nd" \
+  --grid-title "Seaquest"
+```
+
+**(Ablation) Kangaroo without concept aligner:** (Fig. 5.7)
+```bash
+python3 -m plot.plot_predicate_valuation \
+  --exp-name mlp_213_s513 mlp_213_s514 mlp_213_s515 \
+  --predicate-name left_of_ladder right_of_ladder on_ladder \
+  --position Ladder_1 Ladder_2 Ladder_3 \
+  --plots valuation_overlay \
+  --contour-objects Ladder Platform \
+  --save-grid \
+  --grid-labels "Seed 1" "Seed 2" "Seed 3" \
+  --resolution 256 \
+  --value-colorbar-index 0 \
+  --grid-filename "kangaroo_logic_baseline_with_actions" \
+  --grid-title 'Kangaroo ($c_{\operatorname{CA}}=0$)' \
+  --grid-add-max-actions \
+  --reweight \
+  --action-clauses right_ladder left_ladder up_ladder
+```
+
+**(Ablation) Seaquest without concept aligner:** (Fig. 5.8)
+```bash
+python3 -m plot.plot_predicate_valuation \
+  --exp-name mlp_313_s1024 mlp_313_s1025 mlp_313_s1026 \
+  --predicate-name left_of_diver right_of_diver higher_than_diver deeper_than_diver \
+  --position 5 \
+  --plots valuation_overlay \
+  --save-grid \
+  --grid-labels "Seed 1" "Seed 2" "Seed 3" \
+  --resolution 256 \
+  --value-colorbar-index 0 \
+  --grid-filename "seaquest_logic_baseline" \
+  --grid-title 'Seaquest ($c_{\operatorname{CA}}=0$)'
+```
+
+**(Ablation) Kangaroo without annealing concept alignment loss:** (Fig. 5.9)
+```bash
+python3 -m plot.plot_predicate_valuation \
+  --exp-name mlp_209_cl_cc0_03_s2 mlp_209_cl_cc0_1_s2 mlp_209_cl_cc0_3_s1 mlp_209_cl_cc1_0_s2 \
+  --predicate-name left_of_ladder right_of_ladder on_ladder \
+  --position Ladder_1 Ladder_2 Ladder_3 \
+  --plots valuation_overlay \
+  --contour-objects Ladder Platform \
+  --save-grid \
+  --grid-labels '$c_{\operatorname{CA}}=0.03$' '$c_{\operatorname{CA}}=0.1$' '$c_{\operatorname{CA}}=0.3$' '$c_{\operatorname{CA}}=1.0$' \
+  --resolution 256 \
+  --value-colorbar-index 0 \
+  --grid-filename "kangaroo_claude_ca_woa" \
+  --grid-title 'Kangaroo ($\gamma_{\operatorname{CA}}=0$)'
+```
+
+**(Ablation) Kangaroo with annealing concept alignment loss:** (Fig. 5.10)
+```bash
+python3 -m plot.plot_predicate_valuation \
+  --exp-name mlp_209_cl_s2 mlp_257_cl_cc0_1_s2 mlp_257_cl_cc0_3_s1 mlp_257_cl_cc1_0_s2 \
+  --predicate-name left_of_ladder right_of_ladder on_ladder \
+  --position Ladder_1 Ladder_2 Ladder_3 \
+  --plots valuation_overlay \
+  --contour-objects Ladder Platform \
+  --save-grid \
+  --grid-labels '$c_{\operatorname{CA}}=0.03' '$c_{\operatorname{CA}}=0.1$' '$c_{\operatorname{CA}}=0.3$' '$c_{\operatorname{CA}}=1.0$' \
+  --resolution 256 \
+  --value-colorbar-index 0 \
+  --grid-filename "kangaroo_claude_ca_wa" \
+  --grid-title 'Kangaroo ($\gamma_{\operatorname{CA}}=1$)'
+```
+
+**(Ablation) Kangaroo concept alignment loss vs. performance:** (Fig. 5.11)
+
+Requires access to the WandB project.
+```bash
+python3 -m plot.plot_loss_vs_performance \
+  --entity-name roessler-thesis \
+  --project-name blendRL_val_kangaroo
+```
+
+**Examples of concept misalignment:** (Fig 6.1)
+
+Left of ladder:
+```bash
+python -m plot.plot_predicate_valuation \
+  --exp-name mlp_209_cl_s0 mlp_209_cl_cc0_03_s2 \
+  --predicate-name left_of_ladder \
+  --position Ladder_1 Ladder_2 Ladder_3 \
+  --contour-objects Ladder Platform \
+  --plots valuation \
+  --resolution 256
+```
+
+Right of ladder:
+```bash
+python -m plot.plot_predicate_valuation \
+  --exp-name mlp_137_s0 \
+  --predicate-name right_of_ladder \
+  --position Ladder_1 Ladder_2 Ladder_3 \
+  --contour-objects Ladder Platform \
+  --plots valuation \
+  --resolution 256
+```
+
+On ladder:
+```bash
+python -m plot.plot_predicate_valuation \
+  --exp-name mlp_105_cl_s2 mlp_213_s513 \
+  --predicate-name on_ladder \
+  --position Ladder_1 Ladder_2 Ladder_3 \
+  --contour-objects Ladder Platform \
+  --plots valuation \
+  --resolution 256
+``
