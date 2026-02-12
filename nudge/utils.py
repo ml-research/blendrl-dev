@@ -77,7 +77,7 @@ def simulate_prob(extracted_states, num_of_objs, key_picked):
     return extracted_states
 
 
-def build_model(model_dir: Path,
+def build_model(model_dir: Optional[Path] = None,
                env_kwargs_override: Optional[dict] = None,
                step: Optional[int] = None,
                device: Optional[torch.device] = None,
@@ -89,21 +89,25 @@ def build_model(model_dir: Path,
     device = optional(device, get_default_device())
 
     # Determine all relevant paths
-    model_dir = Path(model_dir)
-    config_path = model_dir / "config.yaml"
-    checkpoint_dir = model_dir / "checkpoints"
-    if step is None:
-        most_recent_step = get_most_recent_checkpoint_step(checkpoint_dir)
+    checkpoint_path = None
+    if model_dir is not None:
+        model_dir = Path(model_dir)
+        config_path = model_dir / "config.yaml"
+        checkpoint_dir = model_dir / "checkpoints"
+        if step is None:
+            most_recent_step = get_most_recent_checkpoint_step(checkpoint_dir)
+        else:
+            most_recent_step = step
+        checkpoint_path = checkpoint_dir / f"step_{most_recent_step}.pth"
+
+        print("Loading model from", checkpoint_path)
+
+        # Load model's configuration
+        with open(config_path, "r") as f:
+            config: dict = yaml.load(f, Loader=yaml.Loader)
+            config.update(optional(config_override, {}))
     else:
-        most_recent_step = step
-    checkpoint_path = checkpoint_dir / f"step_{most_recent_step}.pth"
-
-    print("Loading model from", checkpoint_path)
-
-    # Load model's configuration
-    with open(config_path, "r") as f:
-        config: dict = yaml.load(f, Loader=yaml.Loader)
-        config.update(optional(config_override, {}))
+        config = dict() if config_override is None else config_override.copy()
 
     algorithm = config["algorithm"]
     environment = config["env_name"]

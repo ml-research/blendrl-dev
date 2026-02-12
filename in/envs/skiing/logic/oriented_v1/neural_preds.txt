@@ -1,0 +1,6 @@
+right_of_flag:2:oplayer,oflag
+left_of_flag:2:oplayer,oflag
+right_oriented:1:oplayer
+left_oriented:1:oplayer
+straight_oriented:1:oplayer
+true:1:image

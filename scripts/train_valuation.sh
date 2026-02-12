@@ -1,10 +1,12 @@
 #!/bin/bash
 
 VALUATION_MODEL_TYPE="mlp"
-CUDA_DEVICES="2"
+CUDA_DEVICES="5"
 NUM_ENVS=128
 END_SEED=3
 START_SEED=0
+HAS_DEMO="1"
+RULES="small"
 
 run_experiment()
 {
@@ -23,9 +25,14 @@ run_experiment()
   VALMODEL_ARGS="--valuation-model.static-predicates ${STATIC_PREDICATES} --valuation-model.discard-missing-objects --valuation-model.use-position-difference --valuation-model.clip-value 0.01"
 
   # Args
-  DEFAULT_ARGS="--wandb-entity ${WANDB_TEAM} \
-  --rules small \
-  --agent-path models/${ENV_NAME}_demo \
+  DEFAULT_ARGS=""
+  if [ "${HAS_DEMO}" == "1" ]; then
+    DEFAULT_ARGS="--agent-path models/${ENV_NAME}_demo"
+  fi
+
+  DEFAULT_ARGS="${DEFAULT_ARGS} \
+  --wandb-entity ${WANDB_TEAM} \
+  --rules ${RULES} \
   --randomize-start-position --log-heatmaps-steps 200000 --save-train-data \
   --env-name ${ENV_NAME} --track --num-steps 128 --recover --save-steps 10000 \
   --num-envs ${NUM_ENVS} \
@@ -67,7 +74,7 @@ run_experiment()
       -e WANDB_API_KEY="${WANDB_API_KEY}" \
       -e WANDB_TEAM="${WANDB_TEAM}" \
       blendrl:base \
-      bash -c "cd /app & python train_valuation.py --exp-name ${EXPERIMENT_NAME} --seed ${SEED} ${DEFAULT_ARGS}" > /dev/null 2>&1 &
+      bash -c "cd /app & python3 train_valuation.py --exp-name ${EXPERIMENT_NAME} --seed ${SEED} ${DEFAULT_ARGS}" > /dev/null 2>&1 &
 
   done
 }
@@ -105,6 +112,33 @@ END_SEED=1027
 START_SEED=1024
 #run_experiment
 
+# ----------------------------------------------------------------------------------------------------------------------
+# Skiing
+# ----------------------------------------------------------------------------------------------------------------------
+BASE_ARGS="--anneal-concept-coef --reset-neural-component --reset-blending-weights --reset-logic-critic --learn-logic-critic --reset-logic-actor --learn-logic-actor --total-timesteps 10000000 --actor-mode logic --reward-fn goal_only --env-frameskip 1 --env-max-ep-steps 3000"
+ENV_NAME="skiing"
+STATIC_PREDICATES="true left_oriented right_oriented straight_oriented"
+HAS_DEMO="0"
+END_SEED=3
+START_SEED=0
+
+# Rules = small
+NR="413_small"
+#run_experiment
+
+# Rules = default
+RULES="default"
+NR="413_default"
+#run_experiment
+
+# Rules = oriented_v1
+RULES="oriented_v1"
+NR="413_oriented_v1"
+#run_experiment
+
+RULES="small"
+HAS_DEMO="1"
+
 
 # ======================================================================================================================
 # Neural PPO (without enemies)
@@ -135,6 +169,19 @@ STATIC_PREDICATES="visible_diver full_divers not_full_divers oxygen_low"
 END_SEED=1027
 START_SEED=1024
 #run_experiment
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Skiing
+# ----------------------------------------------------------------------------------------------------------------------
+EXTRA_ARGS="--reset-neural-component --learn-neural-component --reset-blending-weights --reset-logic-critic --reset-logic-actor --total-timesteps 10000000 --actor-mode neural --reward-fn goal_only --env-frameskip 1 --env-max-ep-steps 3000"
+ENV_NAME="skiing"
+NR="414a"
+STATIC_PREDICATES="true left_oriented right_oriented straight_oriented"
+HAS_DEMO="0"
+END_SEED=3
+START_SEED=0
+#run_experiment
+HAS_DEMO="1"
 # ======================================================================================================================
 
 
@@ -316,7 +363,138 @@ NR="357_cl_cc1_0"
 ORACLE_PROGRAM="claude_4sonnet_v7"
 #run_experiment
 
+# ----------------------------------------------------------------------------------------------------------------------
+# Skiing (Rules small)
+# ----------------------------------------------------------------------------------------------------------------------
+BASE_ARGS="--anneal-concept-coef --reset-neural-component --reset-blending-weights --reset-logic-critic --learn-logic-critic --reset-logic-actor --learn-logic-actor --total-timesteps 10000000 --actor-mode logic --reward-fn goal_only --env-frameskip 1 --env-max-ep-steps 3000"
+ORACLE="fixed-static"
+ORACLE_RESOLUTION=49
+ENV_NAME="skiing"
+STATIC_PREDICATES="true"
+HAS_DEMO="0"
+
+EXTRA_ARGS="--concept-coef 0.1 ${BASE_ARGS}"
+
+NR="457_1st_gpt_cc0_1"
+ORACLE_PROGRAM="chatgpt_4o_v7"
+#run_experiment
+
+NR="457_1st_cl_cc0_1"
+ORACLE_PROGRAM="claude_4sonnet_v7"
+#run_experiment
+
+EXTRA_ARGS="--concept-coef 0.3 ${BASE_ARGS}"
+
+NR="457_1st_gpt_cc0_3"
+ORACLE_PROGRAM="chatgpt_2025_12_07_v7"
+#run_experiment
+
+NR="457_1st_cl_cc0_3"
+ORACLE_PROGRAM="claude_4.5sonnet_v7"
+#run_experiment
+
+EXTRA_ARGS="--concept-coef 1.0 ${BASE_ARGS}"
+
+NR="457_1st_gpt_cc1_0"
+ORACLE_PROGRAM="chatgpt_2025_12_07_v7"
+#run_experiment
+
+NR="457_1st_cl_cc1_0"
+ORACLE_PROGRAM="claude_4.5sonnet_v7"
+#run_experiment
+
+HAS_DEMO="1"
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Skiing (Rules default)
+# ----------------------------------------------------------------------------------------------------------------------
+BASE_ARGS="--anneal-concept-coef --reset-neural-component --reset-blending-weights --reset-logic-critic --learn-logic-critic --reset-logic-actor --learn-logic-actor --total-timesteps 10000000 --actor-mode logic --reward-fn goal_only --env-frameskip 1 --env-max-ep-steps 3000"
+ORACLE="fixed-static"
+ORACLE_RESOLUTION=49
+ENV_NAME="skiing"
+STATIC_PREDICATES="true"
+HAS_DEMO="0"
+RULES="default"
+
+EXTRA_ARGS="--concept-coef 0.1 ${BASE_ARGS}"
+
+NR="467_1st_gpt_cc0_1"
+ORACLE_PROGRAM="chatgpt_4o_v7"
+#run_experiment
+
+NR="467_1st_cl_cc0_1"
+ORACLE_PROGRAM="claude_4sonnet_v7"
+#run_experiment
+
+EXTRA_ARGS="--concept-coef 0.3 ${BASE_ARGS}"
+
+NR="467_1st_gpt_cc0_3"
+ORACLE_PROGRAM="chatgpt_2025_12_07_v7"
+#run_experiment
+
+NR="467_1st_cl_cc0_3"
+ORACLE_PROGRAM="claude_4.5sonnet_v7"
+#run_experiment
+
+EXTRA_ARGS="--concept-coef 1.0 ${BASE_ARGS}"
+
+NR="467_1st_gpt_cc1_0"
+ORACLE_PROGRAM="chatgpt_2025_12_07_v7"
+#run_experiment
+
+NR="467_1st_cl_cc1_0"
+ORACLE_PROGRAM="claude_4.5sonnet_v7"
+#run_experiment
+
+RULES="small"
+HAS_DEMO="1"
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Skiing (Rules oriented_v1)
+# ----------------------------------------------------------------------------------------------------------------------
+BASE_ARGS="--anneal-concept-coef --reset-neural-component --reset-blending-weights --reset-logic-critic --learn-logic-critic --reset-logic-actor --learn-logic-actor --total-timesteps 10000000 --actor-mode logic --reward-fn goal_only --env-frameskip 1 --env-max-ep-steps 3000"
+ORACLE="fixed-static"
+ORACLE_RESOLUTION=49
+ENV_NAME="skiing"
+STATIC_PREDICATES="true left_oriented right_oriented straight_oriented"
+HAS_DEMO="0"
+RULES="oriented_v1"
+
+EXTRA_ARGS="--concept-coef 0.1 ${BASE_ARGS}"
+
+NR="477_1st_gpt_cc0_1"
+ORACLE_PROGRAM="chatgpt_4o_v7"
+#run_experiment
+
+NR="477_1st_cl_cc0_1"
+ORACLE_PROGRAM="claude_4sonnet_v7"
+#run_experiment
+
+EXTRA_ARGS="--concept-coef 0.3 ${BASE_ARGS}"
+
+NR="477_1st_gpt_cc0_3"
+ORACLE_PROGRAM="chatgpt_4o_v7"
+#run_experiment
+
+NR="477_1st_cl_cc0_3"
+ORACLE_PROGRAM="claude_4sonnet_v7"
+#run_experiment
+
+EXTRA_ARGS="--concept-coef 1.0 ${BASE_ARGS}"
+
+NR="477_1st_gpt_cc1_0"
+ORACLE_PROGRAM="chatgpt_4o_v7"
+run_experiment
+
+NR="477_1st_cl_cc1_0"
+ORACLE_PROGRAM="claude_4sonnet_v7"
+run_experiment
+
+RULES="small"
+HAS_DEMO="1"
+
 # ======================================================================================================================
+# ABLATIONS
 # 1st stage; Different Concept Coefficients; No Concept Annealing
 
 # ----------------------------------------------------------------------------------------------------------------------

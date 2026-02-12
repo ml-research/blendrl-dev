@@ -13,3 +13,4 @@ gymnasium[atari, accept-rom-license]
 imageio
 imageio_ffmpeg
 torch==2.4.0
+prettytable

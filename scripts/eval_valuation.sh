@@ -160,11 +160,67 @@ EXP_NAMES=("mlp_316_gpt_def_s1024" "mlp_316_gpt_def_s1025" "mlp_316_gpt_def_s102
 INCLUDE_BASELINE="0"
 
 # ----------------------------------------------------------------------------------------------------------------------
-# 2nd stage (goal only
+# 2nd stage (goal only)
 EXP_NAMES=("mlp_316_gpt_go_s1024" "mlp_316_gpt_go_s1025" "mlp_316_cl_go_s1024" "mlp_316_cl_go_s1025")
 #eval_valuation
 
 # ----------------------------------------------------------------------------------------------------------------------
 # 2nd stage (No CA-annaeling)
 EXP_NAMES=("mlp_252_cl_cc0_1_s515" "mlp_252_cl_cc0_3_s515" "mlp_252_cl_cc1_0_s515" "mlp_252_cl_cc3_0_s515")
+#eval_valuation
+
+
+# ======================================================================================================================
+# SKIING
+# ======================================================================================================================
+
+ENV_NAME="skiing"
+
+ACTOR_MODES="logic"
+INCLUDE_BASELINE="0"
+
+# 1st stage (GRAIL + GPT4o) CC=0.1
+EXP_NAMES=("mlp_477_1st_gpt_cc0_1_s0" "mlp_477_1st_gpt_cc0_1_s1" "mlp_477_1st_gpt_cc0_1_s2")
+#eval_valuation
+
+# 1st stage (GRAIL + Claude4) CC=0.1
+EXP_NAMES=("mlp_477_1st_cl_cc0_1_s0" "mlp_477_1st_cl_cc0_1_s1" "mlp_477_1st_cl_cc0_1_s2")
+#eval_valuation
+
+# 1st stage (GRAIL + GPT4o) CC=0.3
+EXP_NAMES=("mlp_477_1st_gpt_cc0_3_s0" "mlp_477_1st_gpt_cc0_3_s1" "mlp_477_1st_gpt_cc0_3_s2")
+#eval_valuation
+
+# 1st stage (GRAIL + Claude4) CC=0.3
+EXP_NAMES=("mlp_477_1st_cl_cc0_3_s0" "mlp_477_1st_cl_cc0_3_s1" "mlp_477_1st_cl_cc0_3_s2")
+#eval_valuation
+
+# 1st stage (GRAIL + GPT4o) CC=1.0
+EXP_NAMES=("mlp_477_1st_gpt_cc1_0_s0" "mlp_477_1st_gpt_cc1_0_s1" "mlp_477_1st_gpt_cc1_0_s2")
+#eval_valuation
+
+# 1st stage (GRAIL + Claude4) CC=1.0
+EXP_NAMES=("mlp_477_1st_cl_cc1_0_s0" "mlp_477_1st_cl_cc1_0_s1" "mlp_477_1st_cl_cc1_0_s2")
+#eval_valuation
+
+# ----------------------------------
+# Baseline BlendRL (w/o proxy)
+EXP_NAMES=("mlp_413_oriented_v1_s0" "mlp_413_oriented_v1_s1" "mlp_413_oriented_v1_s2")
+#eval_valuation
+
+# ----------------------------------
+# Baseline Neural PPO
+ACTOR_MODES="neural"
+EXP_NAMES=("mlp_414a_s0" "mlp_414a_s1" "mlp_414a_s2")
+eval_valuation
+
+# -----------------
+ACTOR_MODES="logic_oracle"
+
+# BlendRL + GPT4o
+EXP_NAMES=("mlp_477_1st_gpt_cc0_1_s0")
+#eval_valuation
+
+# BlendRL + Claude4
+EXP_NAMES=("mlp_477_1st_cl_cc0_1_s0")
 #eval_valuation

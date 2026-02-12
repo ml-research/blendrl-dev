@@ -123,9 +123,9 @@ def load_cleanrl_envs(env_id, run_name=None, capture_video=False, num_envs=1):
     )
     return envs
     
-def load_cleanrl_agent(pretrained, device):
+def load_cleanrl_agent(pretrained, device, n_actions=18):
     # from cleanrl.cleanrl.ppo_atari import Agent
-    agent = CNNActor(n_actions=18) #, device=device, verbose=1)
+    agent = CNNActor(n_actions=n_actions) #, device=device, verbose=1)
     if pretrained:
         try:
             agent.load_state_dict(torch.load("cleanrl/out/ppo_Seaquest-v4_1.pth"))
@@ -284,7 +284,8 @@ def normalize(arr: Union[torch.Tensor, np.ndarray], eps: float = 1e-8) -> Union[
 FRAME_SIZE = {
     "seaquest": (160.0, 210.0),
     "kangaroo": (160.0, 210.0),
-    "donkeykong": (160.0, 210.0)
+    "donkeykong": (160.0, 210.0),
+    "skiing": (160.0, 210.0)
 }
 
 DEFAULT_MODIFICATIONS = {
@@ -297,7 +298,8 @@ DEFAULT_MODIFICATIONS = {
     "donkeykong": [
         "random_start",
         "change_level_0"
-    ]
+    ],
+    "skiing": []
 }
 
 

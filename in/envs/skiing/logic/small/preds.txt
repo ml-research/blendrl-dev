@@ -1,0 +1,4 @@
+noop:1:image
+right_to_flag:1:image
+left_to_flag:1:image
+logic_agent:1:image

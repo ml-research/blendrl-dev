@@ -24,6 +24,10 @@ plot_experiment()
 
     echo "Plotting ${EXP_NAME}"
 
+    # Stop and remove container if still running
+    docker stop "${DOCKER_CONTAINER_NAME}" 2>/dev/null || true
+    docker rm "${DOCKER_CONTAINER_NAME}" 2>/dev/null || true
+
     # Run docker container in background
     nohup docker run \
       -v $PARENT_DIR:/app \
@@ -128,6 +132,56 @@ PREDICATES="close_by_monkey close_by_throwncoconut"
 POSITIONS="5"
 #plot_experiment
 
+# Kangaroo (Presentation)
+EXTRA_ARGS="--contour-objects Ladder Platform --fps 40 --resolution 256 --disable-title --zero-pad"
+
+# (1st stage; Best)
+EXP_NAMES=("mlp_257_cl_cc0_3_s1" "mlp_257_gpt_cc0_3_s1")
+PLOTS="oracle_overlay"
+PREDICATES="left_of_ladder right_of_ladder on_ladder"
+POSITIONS="Ladder_1 Ladder_2 Ladder_3"
+SAVE_ANIMATIONS="1"
+#plot_experiment
+SAVE_ANIMATIONS="0"
+
+# (1st stage; c_CA = 0)
+EXP_NAMES=("mlp_213_s513" "mlp_213_s514" "mlp_213_s515")
+PLOTS="valuation valuation_overlay actions actions_overlay"
+PREDICATES="left_of_ladder right_of_ladder on_ladder"
+POSITIONS="Ladder_1 Ladder_2 Ladder_3"
+SAVE_ANIMATIONS="1"
+#plot_experiment
+SAVE_ANIMATIONS="0"
+
+# (2nd; Best)
+EXP_NAMES=("mlp_216_cl_def_s515" "mlp_216_gpt_def_s513")
+PLOTS="valuation_overlay oracle_overlay oracle_overlay"
+PREDICATES="close_by_monkey close_by_throwncoconut"
+POSITIONS="5"
+SKIP=20
+SAVE_ANIMATIONS="1"
+#plot_experiment
+SKIP=5
+SAVE_ANIMATIONS="0"
+
+# (1st; Ablations Different Concept Coefs)
+EXP_NAMES=("mlp_257_cl_cc0_3_s2" "mlp_257_cl_cc1_0_s1" "mlp_209_cl_cc0_3_s2" "mlp_209_cl_cc1_0_s1")
+PLOTS="valuation valuation_overlay oracle_diff_overlay oracle_diff"
+PREDICATES="left_of_ladder right_of_ladder on_ladder"
+POSITIONS="Ladder_1 Ladder_2 Ladder_3"
+SAVE_ANIMATIONS="1"
+#plot_experiment
+SAVE_ANIMATIONS="0"
+
+# (1st; Primitives)
+EXP_NAMES=("mlp_124_s1")
+PLOTS="valuation valuation_overlay oracle_diff_overlay oracle_diff oracle oracle_overlay actions_overlay actions"
+PREDICATES="left_of_ladder right_of_ladder on_ladder"
+POSITIONS="Ladder_1 Ladder_2 Ladder_3"
+SAVE_ANIMATIONS="0"
+#plot_experiment
+SAVE_ANIMATIONS="0"
+
 # ======================================================================================================================
 # Seaquest
 # ======================================================================================================================
@@ -177,4 +231,84 @@ EXP_NAMES=("mlp_316_gpt_go_s1024" "mlp_316_gpt_go_s1025" "mlp_316_cl_go_s1024" "
 PLOTS="valuation oracle_diff"
 PREDICATES="close_by_missile close_by_enemy"
 POSITIONS="5"
+#plot_experiment
+
+# Seaquest (Presentation)
+EXTRA_ARGS="--fps 40 --resolution 256 --disable-title --zero-pad"
+
+# (1st stage; Best)
+EXP_NAMES=("mlp_357_cl_cc0_1_s0" "mlp_357_gpt_cc0_3_s1")
+PLOTS="oracle_overlay"
+PREDICATES="left_of_diver right_of_diver higher_than_diver deeper_than_diver"
+POSITIONS="5"
+SAVE_ANIMATIONS="0"
+#plot_experiment
+SAVE_ANIMATIONS="0"
+
+# (1st, c_CA = 0)
+EXP_NAMES=("mlp_313_s1024" "mlp_313_s1025" "mlp_313_s1026")
+PLOTS="valuation_overlay"
+PREDICATES="left_of_diver right_of_diver higher_than_diver deeper_than_diver"
+POSITIONS="5"
+SAVE_ANIMATIONS="1"
+#plot_experiment
+SAVE_ANIMATIONS="0"
+
+# (2nd; Best)
+EXP_NAMES=("mlp_316_cl_def_s1024" "mlp_316_gpt_def_s1024")
+PLOTS="valuation_overlay oracle_overlay oracle_diff_overlay"
+PREDICATES="close_by_enemy close_by_missile"
+POSITIONS="5"
+SKIP=20
+SAVE_ANIMATIONS="1"
+#plot_experiment
+SKIP=5
+SAVE_ANIMATIONS="0"
+
+
+# ======================================================================================================================
+# Skiing
+# ======================================================================================================================
+EXTRA_ARGS="--resolution 256"
+PLOTS="valuation_overlay"
+PREDICATES="left_of_flag right_of_flag"
+POSITIONS="5"
+
+# BlendRL (without proxy)
+EXP_NAMES=("mlp_413_oriented_v1_s0" "mlp_413_oriented_v1_s1" "mlp_413_oriented_v1_s2")
+plot_experiment
+
+# 1st stage (GRAIL + GPT4o) CC=0.1
+EXP_NAMES=("mlp_477_1st_gpt_cc0_1_s0" "mlp_477_1st_gpt_cc0_1_s1" "mlp_477_1st_gpt_cc0_1_s2")
+#plot_experiment
+
+# 1st stage (GRAIL + Claude4) CC=0.1
+EXP_NAMES=("mlp_477_1st_cl_cc0_1_s0" "mlp_477_1st_cl_cc0_1_s1" "mlp_477_1st_cl_cc0_1_s2")
+#plot_experiment
+
+# 1st stage (GRAIL + GPT4o) CC=0.3
+EXP_NAMES=("mlp_477_1st_gpt_cc0_3_s0" "mlp_477_1st_gpt_cc0_3_s1" "mlp_477_1st_gpt_cc0_3_s2")
+plot_experiment
+
+# 1st stage (GRAIL + Claude4) CC=0.3
+EXP_NAMES=("mlp_477_1st_cl_cc0_3_s0" "mlp_477_1st_cl_cc0_3_s1" "mlp_477_1st_cl_cc0_3_s2")
+plot_experiment
+
+# 1st stage (GRAIL + GPT4o) CC=1.0
+EXP_NAMES=("mlp_477_1st_gpt_cc1_0_s0" "mlp_477_1st_gpt_cc1_0_s1" "mlp_477_1st_gpt_cc1_0_s2")
+plot_experiment
+
+# 1st stage (GRAIL + Claude4) CC=1.0
+EXP_NAMES=("mlp_477_1st_cl_cc1_0_s0" "mlp_477_1st_cl_cc1_0_s1" "mlp_477_1st_cl_cc1_0_s2")
+plot_experiment
+
+# --------------------
+PLOTS="oracle_overlay"
+
+# BlendRL + GPT4o
+EXP_NAMES=("mlp_477_1st_gpt_cc0_1_s0")
+#plot_experiment
+
+# BlendRL + Claude4
+EXP_NAMES=("mlp_477_1st_cl_cc0_1_s0")
 #plot_experiment

@@ -34,6 +34,7 @@ class ValuationExperiment:
         self.config_path = self.dir / "config.yaml"
         self.logs_path = self.dir / "logs.json"
         self.logs_dir = self.dir / "logs"
+        self.videos_dir = self.dir / "videos"
         self.sim_path = self.dir / "sim.npz"
         self.parameter_summary_path = self.dir / "parameters.csv"
 
@@ -71,6 +72,7 @@ class ValuationExperiment:
         os.makedirs(self.images_dir, exist_ok=True)
         os.makedirs(self.plots_dir, exist_ok=True)
         os.makedirs(self.logs_dir, exist_ok=True)
+        os.makedirs(self.videos_dir, exist_ok=True)
 
     def _load_config(self, config: dict) -> Optional[ValuationConfig]:
         for valuation_model_field in ("valuation_model", "oracle_model"):
@@ -134,8 +136,9 @@ class ValuationExperiment:
     @property
     def env_config(self) -> dict:
         env_kwargs = {
-            "modifications": DEFAULT_MODIFICATIONS[self.env_name] + self.config.extra_env_modifications,
+            "modifications": DEFAULT_MODIFICATIONS.get(self.env_name, []) + self.config.extra_env_modifications,
             "frameskip": self.config.env_frameskip,
+            "hud": self.config.env_hud,
             "reward_fn_path": f"in/envs/{self.env_name}/reward/{self.config.reward_fn}.py",
         }
         if self.config.env_max_ep_steps is not None:
@@ -160,7 +163,7 @@ class ValuationExperiment:
             valuation_model = self.get_default_valuation_model(device)
 
         model, _, original_checkpoint_path = build_model(
-            Path(self.config.agent_path),
+            Path(self.config.agent_path) if self.config.agent_path is not None else None,
             env_kwargs_override=self.env_config,
             device=device,
             valuation_model=valuation_model,
@@ -181,16 +184,17 @@ class ValuationExperiment:
         if self.config.reset_neural_component:
             exclude_prefixes.extend(["actor.neural_actor.", "visual_neural_actor."])
 
-        try:
-            state_dict = get_model_state(original_checkpoint_path, exclude_prefixes=exclude_prefixes)
-            if "logic_actor.clause_weights" in state_dict:
-                print("Converting neumann parameters to nsfr")
-                state_dict["logic_actor.im.W"] = state_dict.pop("logic_actor.clause_weights")
-                state_dict["actor.logic_actor.im.W"] = state_dict.pop("actor.logic_actor.clause_weights")
-            model.load_state_dict(state_dict, strict=False)
-            self._parameter_summary.set_from_state_dict(state_dict, checkpoint_path=original_checkpoint_path, frozen=True)
-        except:
-            assert False, f"Failed to load model from {original_checkpoint_path}."
+        if original_checkpoint_path is not None:
+            try:
+                state_dict = get_model_state(original_checkpoint_path, exclude_prefixes=exclude_prefixes)
+                if "logic_actor.clause_weights" in state_dict:
+                    print("Converting neumann parameters to nsfr")
+                    state_dict["logic_actor.im.W"] = state_dict.pop("logic_actor.clause_weights")
+                    state_dict["actor.logic_actor.im.W"] = state_dict.pop("actor.logic_actor.clause_weights")
+                model.load_state_dict(state_dict, strict=False)
+                self._parameter_summary.set_from_state_dict(state_dict, checkpoint_path=original_checkpoint_path, frozen=True)
+            except:
+                assert False, f"Failed to load model from {original_checkpoint_path}."
 
         for experiment_path, layer, prefix in (
                 (self.config.logic_critic_path, model.logic_critic, "logic_critic."),

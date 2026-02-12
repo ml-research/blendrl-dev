@@ -1,0 +1,3 @@
+right_of_flag:2:oplayer,oflag
+left_of_flag:2:oplayer,oflag
+true:1:image

@@ -1,0 +1,35 @@
+env:
+  name: Skiing
+  rules_and_mechanics:
+    - "The player is a skier who can move sideways."
+    - "The goal is to run through all gates between the flags."
+    - "The player is penalized for each gate it misses."
+scene:
+  width: 160
+  height: 210
+  player:
+    width: 10
+    height: 18
+  object_groups:
+    - type: flag
+      width: 5
+      height: 14
+predicates:
+  - name: "right_of_flag"
+    object_types:
+    - flag
+    description: "right of"
+    action: move left
+    purpose: move left to reach the gate between the flags
+  - name: "left_of_flag"
+    object_types:
+      - flag
+    description: "left of"
+    action: move right
+    purpose: move right to reach the gate between the flags
+  - name: "next_flag"
+    object_types:
+      - flag
+    description: "close to"
+    action: move towards the next gate
+    purpose: move towards the next gate that is closest to the player

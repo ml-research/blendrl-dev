@@ -403,7 +403,8 @@ class BlenderActorCritic(nn.Module):
         self.explain = explain
         mlp_module_path = f"in/envs/{self.env.name}/mlp.py"
         module = load_module(mlp_module_path)
-        visual_neural_actor = load_cleanrl_agent(pretrained=False, device=device)
+        n_actions = env.env.action_space.n
+        visual_neural_actor = load_cleanrl_agent(pretrained=False, device=device, n_actions=n_actions)
         self.valuation_model = valuation_model
         if reasoner == "neumann":
             from neumann.common import get_neumann_model

@@ -2,7 +2,11 @@ from typing import List
 
 import torch as th
 from dataclasses import dataclass, field
-from difflogic import LogicLayer, GroupSum
+try:
+    from difflogic import LogicLayer, GroupSum
+except ImportError:
+    print("DLGN not installed. Using this model will fail.")
+    pass
 
 from nsfr.fol.language import Language
 from valuation.models.base import BaseValuationModelConfig, BaseValuationModel

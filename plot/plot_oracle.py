@@ -88,6 +88,10 @@ def main():
         ax.axhline(y=0, color="#ABA9A0", linestyle="--", linewidth=1.5)
         ax.set_yticks([extent[2], 0, extent[3]])
         ax.axvline(x=0, color="#ABA9A0", linestyle="--", linewidth=1.5)
+        if not args.normalize_frame:
+            ax.set_xticklabels([r"$-W$", "0", r"$W$"])
+            ax.set_yticklabels([r"$H$", "0", r"$-H$"])
+
         ax.tick_params(left=False, bottom=False, top=False, right=False, labelsize=16)
 
         # Add grid lines

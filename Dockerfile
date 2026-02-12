@@ -8,7 +8,11 @@ RUN apt-get update
 
 RUN apt-get install -y git
 
-RUN pip install --upgrade pip
+RUN apt install -y python3.10-venv
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+#RUN pip install --upgrade pip
 
 RUN export DEBIAN_FRONTEND=noninteractive
 RUN apt-get install ffmpeg libsm6 libxext6  -y

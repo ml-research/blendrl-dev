@@ -78,9 +78,12 @@ EXP_NAMES=("$STATIC_EXPERIMENT")
 EXP_NAMES=("mlp_209_gpt_s0" "mlp_209_gpt_s1" "mlp_209_gpt_s2" "mlp_209_cl_s0" "mlp_209_cl_s1" "mlp_209_cl_s2" "mlp_257_cl_cc0_1_s0" "mlp_257_cl_cc0_1_s1" "mlp_257_cl_cc0_1_s2" "mlp_257_gpt_cc0_1_s0" "mlp_257_gpt_cc0_1_s1" "mlp_257_gpt_cc0_1_s2" "mlp_257_cl_cc0_3_s0" "mlp_257_cl_cc0_3_s1" "mlp_257_cl_cc0_3_s2" "mlp_257_gpt_cc0_3_s0" "mlp_257_gpt_cc0_3_s1" "mlp_257_gpt_cc0_3_s2" "mlp_257_cl_cc1_0_s0" "mlp_257_cl_cc1_0_s1" "mlp_257_cl_cc1_0_s2" "mlp_257_gpt_cc1_0_s0" "mlp_257_gpt_cc1_0_s1" "mlp_257_gpt_cc1_0_s2")
 #simulate
 
+# Baseline Logic
+EXP_NAMES=("mlp_213_s513" "mlp_213_s514" "mlp_213_s515")
+#simulate
+
 # Baseline ChatGPT + Claude
 EXTRA_ARGS="--extra-env-modifications disable_monkeys --env-frameskip 1 --env-max-ep-steps 3000 --use-oracle --reset-logic-actor"
-ACTOR_MODES=("logic")
 EXP_NAMES=("mlp_257_gpt_cc0_3_s1" "mlp_257_cl_cc0_3_s1")
 #simulate
 
@@ -92,10 +95,6 @@ EXTRA_ARGS="--extra-env-modifications disable_monkeys --env-frameskip 1 --env-ma
 
 # Baseline BlendRL
 EXP_NAMES=("$STATIC_EXPERIMENT")
-#simulate
-
-# Baseline Logic
-EXP_NAMES=("mlp_213_s513" "mlp_213_s514" "mlp_213_s515")
 #simulate
 
 # 1st stage
@@ -141,15 +140,15 @@ EXP_NAMES=("mlp_309_cl_cc0_03_s0" "mlp_309_cl_cc0_03_s1" "mlp_309_cl_cc0_03_s2" 
 #EXP_NAMES=("mlp_309_gpt_s1" "mlp_309_cl_s1" "mlp_309_gpt_s2" "mlp_309_cl_s2") # "mlp_309_gpt_s0" "mlp_309_cl_s0"
 #simulate
 
+# Baseline Logic
+EXP_NAMES=("mlp_313_s1024" "mlp_313_s1025" "mlp_313_s1026")
+#simulate
+
 ACTOR_MODES=("logic")
 EXTRA_ARGS="--extra-env-modifications disable_enemies --env-frameskip 1 --env-max-ep-steps 3000"
 
 # Baseline BlendRL
 EXP_NAMES=("$STATIC_EXPERIMENT")
-#simulate
-
-# Baseline Logic
-EXP_NAMES=("mlp_313_s1024" "mlp_313_s1025" "mlp_313_s1026")
 #simulate
 
 # 1st stage
@@ -179,6 +178,62 @@ EXP_NAMES=("mlp_309_gpt_s0" "mlp_309_cl_s0")
 EXTRA_ARGS="--extra-env-modifications disable_enemies --env-frameskip 1 --env-max-ep-steps 3000 --use-oracle --reset-logic-actor"
 ACTOR_MODES=("logic")
 EXP_NAMES=("mlp_309_gpt_s0" "mlp_309_cl_s0")
+#simulate
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# SKIING
+# ----------------------------------------------------------------------------------------------------------------------
+ENV_NAME="skiing"
+ACTOR_MODES=("logic")
+EXTRA_ARGS="--env-frameskip 1 --env-max-ep-steps 3000 --reset-logic-actor"
+
+# 1st stage (GRAIL + GPT4o) CC=0.1
+EXP_NAMES=("mlp_477_1st_gpt_cc0_1_s0" "mlp_477_1st_gpt_cc0_1_s1" "mlp_477_1st_gpt_cc0_1_s2")
+#simulate
+
+# 1st stage (GRAIL + Claude4) CC=0.1
+EXP_NAMES=("mlp_477_1st_cl_cc0_1_s0" "mlp_477_1st_cl_cc0_1_s1" "mlp_477_1st_cl_cc0_1_s2")
+#simulate
+
+# 1st stage (GRAIL + GPT4o) CC=0.3
+EXP_NAMES=("mlp_477_1st_gpt_cc0_3_s0" "mlp_477_1st_gpt_cc0_3_s1" "mlp_477_1st_gpt_cc0_3_s2")
+#simulate
+
+# 1st stage (GRAIL + Claude4) CC=0.3
+EXP_NAMES=("mlp_477_1st_cl_cc0_3_s0" "mlp_477_1st_cl_cc0_3_s1" "mlp_477_1st_cl_cc0_3_s2")
+#simulate
+
+# 1st stage (GRAIL + GPT4o) CC=1.0
+EXP_NAMES=("mlp_477_1st_gpt_cc1_0_s0" "mlp_477_1st_gpt_cc1_0_s1" "mlp_477_1st_gpt_cc1_0_s2")
+#simulate
+
+# 1st stage (GRAIL + Claude4) CC=1.0
+EXP_NAMES=("mlp_477_1st_cl_cc1_0_s0" "mlp_477_1st_cl_cc1_0_s1" "mlp_477_1st_cl_cc1_0_s2")
+#simulate
+
+# ----------------------------------
+# Baseline BlendRL (w/o proxy)
+EXP_NAMES=("mlp_413_oriented_v1_s0" "mlp_413_oriented_v1_s1" "mlp_413_oriented_v1_s2")
+#simulate
+
+# ----------------------------------
+# Baseline Neural PPO
+ACTOR_MODES=("neural")
+EXP_NAMES=("mlp_414a_s0" "mlp_414a_s1" "mlp_414a_s2")
+simulate
+
+# ----------------------------------
+# Baseline Oracles (BlendRL + GPT4o)
+EXTRA_ARGS="--env-frameskip 1 --env-max-ep-steps 3000 --use-oracle --reset-logic-actor"
+ACTOR_MODES=("logic")
+EXP_NAMES=("mlp_477_1st_gpt_cc0_1_s0")
+#simulate
+
+# Baseline Oracles (BlendRL + Claude4)
+EXTRA_ARGS="--env-frameskip 1 --env-max-ep-steps 3000 --use-oracle  --reset-logic-actor"
+ACTOR_MODES=("logic")
+EXP_NAMES=("mlp_477_1st_cl_cc0_1_s0")
 #simulate
 
 # ======================================================================================================================

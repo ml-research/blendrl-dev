@@ -97,7 +97,7 @@ class ValuationConfig:
     """the number of iterations (computed in runtime)"""
 
     # added
-    agent_path: str = "models/kangaroo_demo"
+    agent_path: Optional[str] = None
     """the path to the pretrained BlendRL agent"""
     env_name: str = "kangaroo"
     """the name of the environment"""
@@ -200,6 +200,8 @@ class ValuationConfig:
     """maximum steps after which an episode is reset"""
     env_frameskip: int = 4
     """frames to skip"""
+    env_hud: bool = False
+    """whether to include hud objects"""
     randomize_start_position: bool = False
     """whether to randomize the start position of the player after the episode has finished"""
     reward_fn: str = "default"

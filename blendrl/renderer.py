@@ -1,6 +1,8 @@
 from datetime import datetime
-from typing import Union
+from pathlib import Path
+from typing import Union, Optional
 
+import cv2
 import numpy as np
 import pygame
 import torch
@@ -10,7 +12,7 @@ from matplotlib.cm import get_cmap
 from nudge.agents.logic_agent import NsfrActorCritic
 from nudge.agents.neural_agent import ActorCritic
 from nudge.env import NudgeBaseEnv
-from nudge.utils import load_model, yellow
+from nudge.utils import yellow
 from valuation.experiment import ValuationExperiment
 
 SCREENSHOTS_BASE_PATH = "out/screenshots/"
@@ -37,6 +39,8 @@ class Renderer:
         render_predicate_probs=True,
         seed=0,
         predicate_name=None,
+        save_video: Optional[Path] = None,
+        save_num_episodes: int = 1
     ):
 
         self.experiment = experiment
@@ -88,11 +92,20 @@ class Renderer:
 
         self._init_pygame()
 
+        self.video_writer = None
+        if save_video:
+            # Video writer
+            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+            self.video_writer = cv2.VideoWriter(str(save_video), fourcc, self.fps, self.window_size)
+            self.save_num_episodes = save_num_episodes
+            self.save_current_episode = 0
+
         self.running = True
         self.paused = False
         self.fast_forward = False
         self.reset = False
         self.takeover = False
+        self.env.env.render_oc_overlay = False
 
     def _init_pygame(self):
         pygame.init()
@@ -105,6 +118,7 @@ class Renderer:
         self.window = pygame.display.set_mode(window_shape, pygame.SCALED)
         self.clock = pygame.time.Clock()
         self.font = pygame.font.SysFont("Calibri", 24)
+        self.window_size = window_shape
 
     def run(self):
         length = 0
@@ -136,12 +150,30 @@ class Renderer:
                 )
                 new_obs_nn = th.tensor(new_obs_nn, device=self.model.device)
 
+                if self.video_writer:
+                    # write frame
+                    frame = pygame.surfarray.array3d(self.window)
+                    frame = np.flip(np.rot90(frame, 3), axis=1)
+                    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                    self.video_writer.write(frame)
+
+                    # check if new episode has started
+                    new_episode_started = done or terminations
+                    if new_episode_started:
+                        self.save_current_episode += 1
+
+                        if self.save_current_episode >= self.save_num_episodes:
+                            # terminate video
+                            self.video_writer.release()
+                            self.video_writer = None
+
                 self._render(new_obs)
 
                 if self.takeover and float(reward) != 0:
                     print(f"Reward {reward:.2f}")
 
                 if self.reset:
+                    print("Reset")
                     done = True
                     (new_obs, new_obs_nn) = self.env.reset()
                     self._render(new_obs)
@@ -180,6 +212,7 @@ class Renderer:
                     self.paused = not self.paused
 
                 elif event.key == pygame.K_r:  # 'R': reset
+                    print("Reset")
                     self.reset = True
 
                 elif event.key == pygame.K_f:  # 'F': fast forward
@@ -430,7 +463,7 @@ class Renderer:
             atom_indices = [blender_prednames.index(predname)]
 
         observation_size = self.env.env.image_size
-        cell_size = (10, 10)
+        cell_size = (4, 4)
         grid_size = (observation_size[0] // cell_size[0], observation_size[1] // cell_size[1])
         num_cells = grid_size[0] * grid_size[1]
         fact_vals = np.zeros(grid_size).T

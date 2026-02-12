@@ -123,6 +123,8 @@ def main():
                 reached_goal = reader["custom_reached_child"]
             elif experiment.env_name == "seaquest" and "custom_rescued_divers" in reader:
                 reached_goal = reader["custom_rescued_divers"]
+            elif experiment.env_name == "skiing" and "custom_passed_flags" in reader:
+                reached_goal = reader["custom_passed_flags"]
 
             if reached_goal is not None:
                 indices = np.argwhere(ep_indices < num_episodes)
