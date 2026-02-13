@@ -68,6 +68,8 @@ class Args:
     """How many checkpoint steps to move forward in the animation each frame. 1=all checkpoints; 2=every second checkpoint."""
     resolution: int = 32
     """Resolution of the heatmaps (number of cells in shortest dimension)"""
+    format: str = "png"
+    """Format of the plot"""
 
     save_grid: bool = False
     grid_labels: List[str] = field(default_factory=lambda: [])
@@ -571,7 +573,7 @@ def main():
                         still_filename = filename
                         if checkpoint.step != checkpoints[-1].step:
                             still_filename += f"_{checkpoint.step}"
-                        still_path = plots_dir / f"{still_filename}.png"
+                        still_path = plots_dir / f"{still_filename}.{args.format}"
 
                         save_fig(fig, still_path, close_fig=False, **save_kwargs)
                         print(f"Checkpoint {checkpoint.step} saved at {still_path}")
@@ -592,7 +594,7 @@ def main():
     # Plot grid
     if args.save_grid:
         grid_filename = "_".join(args.exp_name) + "_" + "_".join(args.plots) if args.grid_filename is None else args.grid_filename
-        grid_path = Path("plots/predicate_valuation/" + grid_filename + ".png")
+        grid_path = Path(f"plots/predicate_valuation/{grid_filename}.{args.format}")
         grid_fig.suptitle(optional(args.grid_title, ""), fontsize=16)
         for grid_row in range(num_rows):
             for grid_col in range(num_grid_columns):

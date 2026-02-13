@@ -276,7 +276,7 @@ POSITIONS="5"
 
 # BlendRL (without proxy)
 EXP_NAMES=("mlp_413_oriented_v1_s0" "mlp_413_oriented_v1_s1" "mlp_413_oriented_v1_s2")
-plot_experiment
+#plot_experiment
 
 # 1st stage (GRAIL + GPT4o) CC=0.1
 EXP_NAMES=("mlp_477_1st_gpt_cc0_1_s0" "mlp_477_1st_gpt_cc0_1_s1" "mlp_477_1st_gpt_cc0_1_s2")
@@ -288,19 +288,19 @@ EXP_NAMES=("mlp_477_1st_cl_cc0_1_s0" "mlp_477_1st_cl_cc0_1_s1" "mlp_477_1st_cl_c
 
 # 1st stage (GRAIL + GPT4o) CC=0.3
 EXP_NAMES=("mlp_477_1st_gpt_cc0_3_s0" "mlp_477_1st_gpt_cc0_3_s1" "mlp_477_1st_gpt_cc0_3_s2")
-plot_experiment
+#plot_experiment
 
 # 1st stage (GRAIL + Claude4) CC=0.3
 EXP_NAMES=("mlp_477_1st_cl_cc0_3_s0" "mlp_477_1st_cl_cc0_3_s1" "mlp_477_1st_cl_cc0_3_s2")
-plot_experiment
+#plot_experiment
 
 # 1st stage (GRAIL + GPT4o) CC=1.0
 EXP_NAMES=("mlp_477_1st_gpt_cc1_0_s0" "mlp_477_1st_gpt_cc1_0_s1" "mlp_477_1st_gpt_cc1_0_s2")
-plot_experiment
+#plot_experiment
 
 # 1st stage (GRAIL + Claude4) CC=1.0
 EXP_NAMES=("mlp_477_1st_cl_cc1_0_s0" "mlp_477_1st_cl_cc1_0_s1" "mlp_477_1st_cl_cc1_0_s2")
-plot_experiment
+#plot_experiment
 
 # --------------------
 PLOTS="oracle_overlay"
